@@ -13,7 +13,7 @@ export default function Demo() {
     <>
       <div className="eyebrow">Demo · {sessions.length} sim sessions · {n} drives · two driver heads</div>
       <h1>R9 vs Qi4D Max, shot by shot</h1>
-      <p className="sub" style={{ marginBottom: 16 }}>Every drive from eight launch-monitor sessions, in the order it happens: the club&apos;s path and face through impact, where the ball met the face, then the flight in 3D. Each session has a highlighted stretch.</p>
+      <p className="sub" style={{ marginBottom: 16 }}>Every drive from ten launch-monitor sessions, in the order it happens: the club&apos;s path and face through impact, where the ball met the face, then the flight in 3D. Each session has a highlighted stretch.</p>
       <SessionsDashboard sessions={sessions} status={status} />
     </>
   );

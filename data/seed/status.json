@@ -1,21 +1,21 @@
 {
  "as_of": "2026-10-23",
- "summary": "Eight sessions, 221 drives, two driver heads.",
+ "summary": "Ten sessions, 255 drives, two driver heads.",
  "cards": [
   {
    "k": "Best full session",
    "v": "Oct 21 \u00b7 R9 after 9",
-   "p": "226 carry / 246 total over 31 drives, 2,530 rpm, strike within 1 mm of center, face-to-path +0.5\u00b0. The first session where spin, strike and face all sat in the window at once."
+   "p": "226 carry / 246 total over 31 drives, 2,530 rpm, strike within 1 mm of center, face-to-path +0.5\u00b0. Oct 23 after irons came close on spin (2,550) and total (241) but started the ball further right."
   },
   {
    "k": "Direction",
    "v": "Face, not path",
-   "p": "Path is reliably in-to-out (+2 to +4\u00b0). The face is what moves: each degree of face-to-path is about 8 yards, and 68 of 81 big misses went right. The low takeaway and trail-shoulder dip both close the face to the path."
+   "p": "Path is now +5\u00b0 in-to-out, the most of any session. The face follows it (face-to-path near zero on Oct 23) so the misses are pushes that start right, not slices. Closing the face half a degree to the path, as on shots 33-34, brings the finish back to the line."
   },
   {
    "k": "Strike",
-   "v": "Centered vertically",
-   "p": "Early sessions struck 12-15 mm low; Oct 13 after the tee change 6 mm low; Oct 21 centered. Horizontal spread with the shorter shaft on Oct 15 is the open question for the fitting."
+   "v": "Still a touch low",
+   "p": "Oct 21 after 9 was centered; Oct 23 averaged 11 mm low cold and 7 mm low after the irons, with the first six drives 16 mm low. Horizontal spread stayed inside \u00b115 mm on the clean strikes."
   },
   {
    "k": "Spin",
@@ -29,8 +29,8 @@
   },
   {
    "k": "Next session",
-   "v": "Warm up before recording",
-   "p": "The cold first 24 drives on Oct 21 looked like the old swing (12 mm low, 3,500 rpm, 22 yards right). Hit ten before the data counts, keep the higher tee, and bring the CSV export so the adapter can replace the screen reads."
+   "v": "Warm up, then record",
+   "p": "Twice now the cold first drives have been 30-40 yards right and 16 mm low. Hit the irons first, or ten unrecorded drivers, then count. Bring the CSV export so the adapter can replace the screen reads."
   }
  ]
 }

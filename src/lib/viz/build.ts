@@ -12,10 +12,11 @@ export interface SessionLike {
   findings?: Array<{ title: string; body: string }> | null;
 }
 
+const timeOf = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", "");
 const fmtDate = (iso: string, withTime: boolean) => {
   const d = new Date(iso);
   const day = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return withTime ? `${day} ${d.toLocaleTimeString("en-US", { hour: "numeric" }).toLowerCase().replace(" ", "")}` : day;
+  return withTime ? `${day} ${timeOf(d)}` : day;
 };
 
 /** Turn sessions into VizGroups: chronological, colored in order, with the best stretch and its cue. */
@@ -31,8 +32,7 @@ export function groupsFrom(sessions: SessionLike[]): VizGroup[] {
     const clubShort = club.split(" ")[0];
     const date = fmtDate(s.played_at, sameDay);
     const d = new Date(s.played_at);
-    const hr = d.toLocaleTimeString("en-US", { hour: "numeric" }).toLowerCase().replace(" ", "");
-    const tag = `${d.getMonth() + 1}/${d.getDate()}${sameDay ? " " + hr : ""}`;
+    const tag = `${d.getMonth() + 1}/${d.getDate()}${sameDay ? " " + timeOf(d) : ""}`;
     return {
       key: s.id ?? `s${i}`,
       name: `${club} · ${date}`,
