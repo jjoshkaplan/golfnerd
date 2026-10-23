@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import type { Shot } from "@/lib/schema";
-import { type VizGroup, FILTERS, METRICS, fmtV, live, shotTip, avgOf, isHot } from "@/lib/viz/groups";
+import { type VizGroup, type Status, FILTERS, METRICS, fmtV, live, shotTip, avgOf, isHot } from "@/lib/viz/groups";
 import { labelColor, seriesColor } from "@/lib/viz/theme";
 import { drawStrikeMap, type Hit } from "@/lib/viz/face";
 import { drawLanding, legendText, type LandingLegend } from "@/lib/viz/landing";
@@ -12,13 +12,13 @@ import Canvas2D from "./Canvas2D";
 import SessionPicker from "./SessionPicker";
 import ReplayStage, { type ReplayMode, type ShotPick, type GroupScope } from "./ReplayStage";
 
-type Tab = "replay" | "dispersion" | "trends";
+type Tab = "replay" | "compare" | "dispersion" | "trends" | "notes";
 
 /**
  * The full analysis view for a set of groups: Replay, Dispersion and Trends
  * tabs with shared session selection, filter and theme.
  */
-export default function Dashboard({ groups, initialTab = "replay" }: { groups: VizGroup[]; initialTab?: Tab }) {
+export default function Dashboard({ groups, initialTab = "replay", status }: { groups: VizGroup[]; initialTab?: Tab; status?: Status | null }) {
   const T = useTheme();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(groups.map((g) => g.key)));
@@ -76,10 +76,32 @@ export default function Dashboard({ groups, initialTab = "replay" }: { groups: V
     return <td className={cls}>{zero ? "0" : (d > 0 ? "+" : "-") + t}</td>;
   };
 
+  const pct = (rows: Shot[], f: (s: Shot) => boolean) => (rows.length ? Math.round((rows.filter(f).length / rows.length) * 100) : null);
+  const scopeName = (g: VizGroup, best: boolean) => `${g.name} · ${best ? `best ${g.best?.[0]}-${g.best?.[1]}` : "all"}`;
+  function h2hTable() {
+    const A = byKey(h2h[0].key), B = byKey(h2h[1].key); if (!A || !B) return null;
+    const ra = live(A, h2h[0].best).filter(filter), rb = live(B, h2h[1].best).filter(filter);
+    return (
+      <div className="tablewrap"><table>
+        <thead><tr><th /><th style={{ color: labelColor(A.color, T) }}>{scopeName(A, h2h[0].best)}<br />{ra.length} shots</th><th style={{ color: labelColor(B.color, T) }}>{scopeName(B, h2h[1].best)}<br />{rb.length} shots</th><th>B − A</th></tr></thead>
+        <tbody>
+          {METRICS.map((m) => { const a = cell(ra, m), b = cell(rb, m); return <tr key={m[0]}><td>{m[0]}</td><td>{fmtV(a, m[2])}</td><td>{fmtV(b, m[2])}</td>{diffCell(a, b, m)}</tr>; })}
+          <tr><td>In a {fairway} yd fairway</td><td>{pct(ra, (s) => Math.abs(s.offline_yd ?? 99) <= fairway / 2) ?? "n/a"}%</td><td>{pct(rb, (s) => Math.abs(s.offline_yd ?? 99) <= fairway / 2) ?? "n/a"}%</td><td /></tr>
+          <tr><td>Shots with draw spin</td><td>{pct(ra, (s) => (s.side_rpm ?? 0) < -150) ?? "n/a"}%</td><td>{pct(rb, (s) => (s.side_rpm ?? 0) < -150) ?? "n/a"}%</td><td /></tr>
+        </tbody></table></div>
+    );
+  }
+  const groupPickers = (
+    <div className="h2h">
+      <label>Group A<select aria-label="Group A" value={scopeVal(h2h[0])} onChange={(e) => setH2h([parseScope(e.target.value), h2h[1]])}>{scopeOpts.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select></label>
+      <label>Group B<select aria-label="Group B" value={scopeVal(h2h[1])} onChange={(e) => setH2h([h2h[0], parseScope(e.target.value)])}>{scopeOpts.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</select></label>
+    </div>
+  );
+
   return (
     <div className="dash">
       <nav className="tabs" role="tablist">
-        {(["replay", "dispersion", "trends"] as Tab[]).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>)}
+        {(["replay", "compare", "trends", "dispersion", "notes"] as Tab[]).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>)}
       </nav>
 
       {tab === "replay" && (
@@ -128,21 +150,62 @@ export default function Dashboard({ groups, initialTab = "replay" }: { groups: V
               <Toggle label="Other shots" checked={trails} onChange={setTrails} /></div><div className="end" /></div>
           </div>
 
-          {mode === "h2h" && (() => {
-            const A = byKey(h2h[0].key), B = byKey(h2h[1].key); if (!A || !B) return null;
-            const ra = live(A, h2h[0].best).filter(filter), rb = live(B, h2h[1].best).filter(filter);
-            const nm = (g: VizGroup, sc: GroupScope) => `${g.name} · ${sc.best ? `best ${g.best?.[0]}-${g.best?.[1]}` : "all"}`;
-            const pct = (rows: Shot[], f: (s: Shot) => boolean) => (rows.length ? Math.round((rows.filter(f).length / rows.length) * 100) : null);
-            return (
-              <div className="tablewrap"><table>
-                <thead><tr><th /><th style={{ color: labelColor(A.color, T) }}>{nm(A, h2h[0])}<br />{ra.length} shots</th><th style={{ color: labelColor(B.color, T) }}>{nm(B, h2h[1])}<br />{rb.length} shots</th><th>B − A</th></tr></thead>
-                <tbody>
-                  {METRICS.map((m) => { const a = cell(ra, m), b = cell(rb, m); return <tr key={m[0]}><td>{m[0]}</td><td>{fmtV(a, m[2])}</td><td>{fmtV(b, m[2])}</td>{diffCell(a, b, m)}</tr>; })}
-                  <tr><td>In a {fairway} yd fairway</td><td>{pct(ra, (s) => Math.abs(s.offline_yd ?? 99) <= fairway / 2) ?? "n/a"}%</td><td>{pct(rb, (s) => Math.abs(s.offline_yd ?? 99) <= fairway / 2) ?? "n/a"}%</td><td /></tr>
-                  <tr><td>Shots with draw spin</td><td>{pct(ra, (s) => (s.side_rpm ?? 0) < -150) ?? "n/a"}%</td><td>{pct(rb, (s) => (s.side_rpm ?? 0) < -150) ?? "n/a"}%</td><td /></tr>
-                </tbody></table></div>
-            );
-          })()}
+          {mode === "h2h" && h2hTable()}
+        </section>
+      )}
+
+      {tab === "compare" && (
+        <section>
+          <h2>Head to head</h2>
+          <p className="sub">Pick any two groups. Head-to-head mode on the Replay tab plays their average flights side by side. The Replay tab&apos;s shot filter applies here too.</p>
+          {groupPickers}
+          {h2hTable()}
+          <h2 style={{ marginTop: 12 }}>All sessions</h2>
+          <p className="sub">Newest first. Bold columns are each session&apos;s best stretch.</p>
+          <div className="tablewrap"><table className="wide">
+            <thead><tr><th />{[...groups].reverse().flatMap((g) => [
+              <th key={g.key + "b"} style={{ color: labelColor(g.color, T) }}>{g.name}<br />{g.best ? `best ${g.best[0]}-${g.best[1]}` : "best"}</th>,
+              <th key={g.key + "a"} style={{ color: labelColor(g.color, T) }}>{g.name}<br />all {live(g).length}</th>])}</tr></thead>
+            <tbody>{METRICS.map((m) => <tr key={m[0]}><td>{m[0]}</td>{[...groups].reverse().flatMap((g) => {
+              const vb = cell(live(g, true), m), va = cell(live(g), m);
+              const show = (v: number | null) => { let t = fmtV(v, m[2]); if (m[0].startsWith("Avg offline") && v != null && v > 0) t = "+" + t; return t; };
+              return [<td key={g.key + "b"} className="best">{show(vb)}</td>, <td key={g.key + "a"}>{show(va)}</td>]; })}</tr>)}</tbody>
+          </table></div>
+        </section>
+      )}
+
+      {tab === "notes" && (
+        <section>
+          {status && status.cards.length > 0 && (<>
+            <h2>Where things stand</h2>
+            {(status.as_of || status.summary) && <p className="sub">{status.as_of ? `As of ${status.as_of}. ` : ""}{status.summary ?? ""}</p>}
+            <div className="status">{status.cards.map((c) => <div className="st" key={c.k}><span className="k">{c.k}</span><div className="v">{c.v}</div><p>{c.p}</p></div>)}</div>
+          </>)}
+          <h2>Session by session</h2>
+          <p className="sub">Newest first. Each session&apos;s highlighted stretch, swing cue, notes and findings.</p>
+          <div className="tl">
+            {[...groups].reverse().map((g) => {
+              const a = live(g), b = live(g, true);
+              const cards = g.findings ?? [];
+              return (
+                <div className="ev" key={g.key}>
+                  <div className="when">
+                    <b style={{ color: labelColor(g.color, T) }}>{g.name}</b>
+                    <span className="n">{a.length} drives{g.best ? ` · best ${g.best[0]}-${g.best[1]}` : ""}{b.length ? ` · ${Math.round(avgOf(b, (s) => s.carry_yd) ?? 0)} carry best` : ""}</span>
+                    {g.cue && <span className="cue">{g.cue}</span>}
+                    {g.stretches && g.stretches.length > 1 && <span className="n">{g.stretches.map((st) => `${st.label} ${st.from}-${st.to}${st.cue ? ` (${st.cue})` : ""}`).join(" · ")}</span>}
+                    <button type="button" onClick={() => openIn(g)}>Open in replay</button>
+                  </div>
+                  <div className="cards">
+                    {cards.map((f, i) => <div className="note" key={i}><h3>{f.title}</h3><p>{f.body}</p></div>)}
+                    {!cards.length && g.notes && <div className="note"><h3>Session notes</h3><p>{g.notes}</p></div>}
+                    {!cards.length && !g.notes && <div className="note"><p>No notes yet for this session.</p></div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="method">Flights are simulated from ball speed, launch, spin and spin axis using drag and spin-driven lift, then anchored to each shot&apos;s measured carry, apex and finish. Coefficients are standard approximations, not the simulator&apos;s own model. Average flights in Head-to-head mode are the point-by-point mean of the group&apos;s simulated flights. Dispersion ellipses are one standard deviation of the finishing positions, so about 40% of shots land inside them; dashed outlines are whole sessions, solid outlines are best stretches. Horizontal strike is shown as + / − because the device&apos;s toe and heel convention wasn&apos;t confirmed.</p>
         </section>
       )}
 

@@ -9,6 +9,7 @@ export interface SessionLike {
   notes?: string | null;
   shots: Shot[] | Record<string, unknown>[];
   stretches?: Array<{ label?: string; cue?: string | null; from_shot: number; to_shot: number; is_best?: boolean | null }> | null;
+  findings?: Array<{ title: string; body: string }> | null;
 }
 
 const fmtDate = (iso: string, withTime: boolean) => {
@@ -41,6 +42,9 @@ export function groupsFrom(sessions: SessionLike[]): VizGroup[] {
       color: i,
       shots,
       best: best ? [best.from_shot, best.to_shot] : undefined,
+      notes: s.notes ?? undefined,
+      findings: s.findings ?? undefined,
+      stretches: (s.stretches ?? []).map((st) => ({ label: st.label ?? "Stretch", cue: st.cue ?? undefined, from: st.from_shot, to: st.to_shot, best: !!st.is_best })),
     };
   });
 }

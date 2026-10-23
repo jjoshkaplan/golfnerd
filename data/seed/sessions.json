@@ -435,6 +435,12 @@
     "dyn_loft_deg": null,
     "club_speed_mph": 105
    }
+  ],
+  "findings": [
+   {
+    "title": "The baseline",
+    "body": "The new head with the setup changes from the lesson produced a push draw on the best stretch, but the screen did not capture strike location, attack angle or dynamic loft, so this session anchors the ball-flight comparison only."
+   }
   ]
  },
  {
@@ -1166,6 +1172,12 @@
     "attack_deg": 1.9,
     "dyn_loft_deg": 17,
     "club_speed_mph": 102
+   }
+  ],
+  "findings": [
+   {
+    "title": "Low takeaway fixed strike and face",
+    "body": "Shots 23-27 came after adding a deliberate low takeaway. Vertical strike moved to about 1 mm from center and face-to-path tightened to about 1\u00b0. The session faded after that, likely from fatigue after 9 sim holes."
    }
   ]
  },
@@ -2067,6 +2079,16 @@
     "dyn_loft_deg": null,
     "club_speed_mph": 101
    }
+  ],
+  "findings": [
+   {
+    "title": "Shoulder drop moved the path way out",
+    "body": "Dropping the trail shoulder sent the path well in-to-out: about +8\u00b0 on shots 1-14. The face followed the path almost exactly, so the ball started right and never curved back. Those drives averaged 44 yards right. That's a push with no draw."
+   },
+   {
+    "title": "Dialed back, it was the longest stretch yet",
+    "body": "Shots 33-40 had a path around +2\u00b0 and the face slightly closed to it. They averaged 149 mph ball speed, 1.47 smash, 241 carry and 259 total, with an average miss of 16 yards."
+   }
   ]
  },
  {
@@ -2526,6 +2548,20 @@
     "dyn_loft_deg": 18,
     "club_speed_mph": 102
    }
+  ],
+  "findings": [
+   {
+    "title": "A higher tee fixed the low strike",
+    "body": "Shots 1-13 came before a 7 iron break, with tee height still changing. After the break the higher tee was locked in and attack angle rose from about +3\u00b0 to +5.5\u00b0. Strike moved from 15 mm low to 6 mm low, spin dropped from about 3,400 to 2,600 rpm, and carry jumped from 200 to 229 yards."
+   },
+   {
+    "title": "The push draw showed up",
+    "body": "On shots 14-21 the path stayed around +3\u00b0 with the face closed to it by about 1\u00b0. Six of the eight had draw spin, and they averaged 1 yard left of the target line."
+   },
+   {
+    "title": "85-90% effort, same speed",
+    "body": "Club speed still averaged 100 mph, the same as full-effort sessions, and after the break it averaged 102. Shot 14, the first drive after 32 seven irons, went 238 carry and 254 total, struck 3 mm from center."
+   }
   ]
  },
  {
@@ -2901,6 +2937,20 @@
     "attack_deg": 6.5,
     "dyn_loft_deg": 16,
     "club_speed_mph": 104
+   }
+  ],
+  "findings": [
+   {
+    "title": "The new move closed the face",
+    "body": "With the trail-shoulder dip, face-to-path went from about +3\u00b0 on shots 1-9 to about \u22121.5\u00b0 on shots 10-17. That is the change the move was meant to make: the face stopped hanging open to the path."
+   },
+   {
+    "title": "Strike moved across the face",
+    "body": "Six drives were struck 32-51 mm from center horizontally, all on the same side, and averaged 1.30 smash and 174 carry. The ten strikes within 25 mm averaged 1.43 smash and 207 carry. Shorter shaft plus a new move changed where the ball met the face."
+   },
+   {
+    "title": "Path is now reliably in-to-out",
+    "body": "Every clean drive had a path between +1.4\u00b0 and +6.3\u00b0, averaging about +3.7\u00b0. Attack angle averaged +6\u00b0, the highest of any session. Shot 6 is a sim misread and is left out of the club averages."
    }
   ]
  },
@@ -3592,6 +3642,20 @@
     "dyn_loft_deg": 8,
     "club_speed_mph": 102
    }
+  ],
+  "findings": [
+   {
+    "title": "Tightest dispersion of any session",
+    "body": "32 drives averaged 19 yards from the line, centered 5 yards right, with half of them carrying draw spin. Face-to-path averaged 2.2\u00b0 and the path was a gentle +1.8\u00b0. The move from the lesson held up without the coach watching."
+   },
+   {
+    "title": "Spin collapsed",
+    "body": "Backspin averaged 1,970 rpm, down from 2,600-3,400 in every other session. Dynamic loft dropped to about 11\u00b0 (from 17-18\u00b0) and strikes averaged 16 mm above center. Nine drives under 1,400 rpm carried only 169 yards despite 146 mph ball speed. Drives with 1,400-2,600 rpm carried 216 and ran out to 250."
+   },
+   {
+    "title": "Fatigue after 18 holes",
+    "body": "Shots 1-13 averaged 222 carry and 250 total. Shots 20-32 averaged 179 carry. Shots 10-14 were the best five in a row: 229 carry, 257 total, 1.42 smash, face within 1.3\u00b0 of the path. Shots 6 and 20 are sim club-data misreads and are left out of the club averages."
+   }
   ]
  },
  {
@@ -4113,6 +4177,12 @@
     "attack_deg": 6.3,
     "dyn_loft_deg": 19,
     "club_speed_mph": 103
+   }
+  ],
+  "findings": [
+   {
+    "title": "The cold warm-up looked like the old swing",
+    "body": "The first 24 drives struck 12 mm low, spun 3,500 rpm and missed 22 yards right on average, with the face 1.5\u00b0 open to the path. Only 21% would have stayed in a 30-yard fairway. That is the pattern to expect from a first tee shot without a routine."
    }
   ]
  },
@@ -4782,6 +4852,20 @@
     "attack_deg": 6.5,
     "dyn_loft_deg": 21,
     "club_speed_mph": 102
+   }
+  ],
+  "findings": [
+   {
+    "title": "Spin and strike landed in the window",
+    "body": "31 drives averaged 2,530 rpm, vertical strike within 1 mm of center, 1.43 smash, and the group centered on the target line (1 yard right on average). Carry averaged 226 and total 246. Shots 14-31 averaged 232 carry."
+   },
+   {
+    "title": "The face decides where it goes",
+    "body": "Across 218 drives with club data, offline distance tracks face angle closely (correlation 0.81) and path barely at all (0.23). Path stays within about 1\u00b0 from swing to swing; the face varies 2-3.5\u00b0. Each degree of face-to-path moves the finish about 8 yards."
+   },
+   {
+    "title": "Spin comes from delivered loft",
+    "body": "Backspin follows spin loft (dynamic loft minus attack angle) at about 190 rpm per degree. Strike height matters less, about 36 rpm per mm. The R9 sessions delivered 18-20\u00b0 of dynamic loft; the Qi4D short-shaft sessions 10-16\u00b0, which is where the low-spin drives came from."
    }
   ]
  }

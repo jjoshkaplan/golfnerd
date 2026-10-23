@@ -16,7 +16,13 @@ export interface VizGroup {
   color: number;       // series index into SERIES
   shots: Shot[];
   best?: [number, number];
+  notes?: string;
+  findings?: Array<{ title: string; body: string }>;
+  stretches?: Array<{ label: string; cue?: string; from: number; to: number; best: boolean }>;
 }
+
+export interface StatusCard { k: string; v: string; p: string }
+export interface Status { as_of?: string; summary?: string; cards: StatusCard[] }
 
 export const isHot = (g: VizGroup, s: Shot) => !!g.best && s.shot_no >= g.best[0] && s.shot_no <= g.best[1];
 export const live = (g: VizGroup, bestOnly = false) => g.shots.filter((s) => !s.excluded && (!bestOnly || isHot(g, s)));

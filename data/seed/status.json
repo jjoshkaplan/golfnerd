@@ -1,0 +1,36 @@
+{
+ "as_of": "2026-10-23",
+ "summary": "Eight sessions, 221 drives, two driver heads.",
+ "cards": [
+  {
+   "k": "Best full session",
+   "v": "Oct 21 \u00b7 R9 after 9",
+   "p": "226 carry / 246 total over 31 drives, 2,530 rpm, strike within 1 mm of center, face-to-path +0.5\u00b0. The first session where spin, strike and face all sat in the window at once."
+  },
+  {
+   "k": "Direction",
+   "v": "Face, not path",
+   "p": "Path is reliably in-to-out (+2 to +4\u00b0). The face is what moves: each degree of face-to-path is about 8 yards, and 68 of 81 big misses went right. The low takeaway and trail-shoulder dip both close the face to the path."
+  },
+  {
+   "k": "Strike",
+   "v": "Centered vertically",
+   "p": "Early sessions struck 12-15 mm low; Oct 13 after the tee change 6 mm low; Oct 21 centered. Horizontal spread with the shorter shaft on Oct 15 is the open question for the fitting."
+  },
+  {
+   "k": "Spin",
+   "v": "2,300-2,800 window",
+   "p": "Spin follows delivered loft (about 190 rpm per degree). The R9 sits in the window when struck center. The Qi4D short-shaft sessions delofted to 10-16\u00b0 and dropped under 2,000 rpm, which cost carry."
+  },
+  {
+   "k": "Equipment",
+   "v": "Regrip the R9 first",
+   "p": "Standard-size grip, leave the length. At the GolfTec fitting: Qi4D Max vs standard at 12\u00b0, about 44.5\", 60 g stiff mid-launch shaft (Ventus Blue 6-S class). Skip Ventus Black and the Cypher 50."
+  },
+  {
+   "k": "Next session",
+   "v": "Warm up before recording",
+   "p": "The cold first 24 drives on Oct 21 looked like the old swing (12 mm low, 3,500 rpm, 22 yards right). Hit ten before the data counts, keep the higher tee, and bring the CSV export so the adapter can replace the screen reads."
+  }
+ ]
+}
