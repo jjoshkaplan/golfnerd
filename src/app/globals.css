@@ -157,7 +157,7 @@ table.wide { min-width: 940px; }
 .detail .head { display: flex; gap: 10px 16px; align-items: baseline; flex-wrap: wrap; }
 .detail .head h3 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 600; letter-spacing: .02em; }
 .detail .head .grow { flex: 1; }
-.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 
 @media (max-width: 900px) { .view, .dgrid { grid-template-columns: 1fr; } .ev { grid-template-columns: 1fr; } .pane { height: min(60vw, 360px); } .pane.stage { height: min(80vw, 460px); } }
 @media (max-width: 700px) { .ctrl { grid-template-columns: 1fr; } }
