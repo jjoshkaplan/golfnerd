@@ -13,7 +13,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.1",
-    "next": "15.3.3",
+    "next": "15.5.4",
     "papaparse": "^5.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -28,7 +28,7 @@
     "@types/three": "^0.176.0",
     "dotenv": "^16.5.0",
     "eslint": "^9.27.0",
-    "eslint-config-next": "15.3.3",
+    "eslint-config-next": "15.5.4",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }
