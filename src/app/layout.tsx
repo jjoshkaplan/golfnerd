@@ -5,8 +5,10 @@ import { ThemeToggle } from "@/components/theme";
 import { THEME_BOOT } from "@/lib/viz/themeBoot";
 
 export const metadata: Metadata = {
-  title: "golfnerds",
+  metadataBase: new URL("https://golfnerds.xyz"),
+  title: { default: "golfnerds", template: "%s · golfnerds" },
   description: "Upload your launch monitor sessions and see what actually changed between them.",
+  openGraph: { title: "golfnerds", description: "Launch monitor sessions, compared: replay, dispersion and trends.", url: "https://golfnerds.xyz", siteName: "golfnerds" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
