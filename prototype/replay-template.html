@@ -1,0 +1,631 @@
+<title>Driver Flight Replay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: launch-monitor bay. Tabs: Replay (controls as dropdown + switch rows, then three equal panes in swing order: path & face, strike, flight), Compare, Trends (scrollable session cards), Strike map, Notes (status + timeline). Single dark look by choice. */
+:root{
+  color-scheme:dark;
+  --bg:#101215;--panel:#171a1f;--panel2:#1d2127;--line:#2a3038;
+  --fg:#eceae4;--muted:#9aa2a8;--faint:#6c747b;
+  --pk:#e0608a;--pksoft:#f3a3bf;--tl:#35b7c9;--tlsoft:#8fdbe8;--g1:#b58b5a;--g1soft:#dcbf98;--g2:#6fd06a;--g2soft:#aee8aa;--v9:#9085e9;--v9soft:#bdb6f5;--b9:#2fbf8a;--b9soft:#8fe0c0;--r9:#3987e5;--r9soft:#7fb2f0;--qi:#e8a33d;--qisoft:#f0c07a;
+  --good:#7fd18f;--warn:#e9a36b;--panebg:#14161a;--cardbg:rgba(10,12,14,.78);--hover:#262b33;--track:#30373f;--step:#3a424a;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+:root[data-theme=light]{color-scheme:light;--bg:#f4f4f1;--panel:#ffffff;--panel2:#eeeeea;--line:#d6d8d3;--fg:#1a1d21;--muted:#555c63;--faint:#7c848c;--pksoft:#b8325f;--tlsoft:#1f8a9a;--g1soft:#8a6436;--g2soft:#3c8f38;--v9soft:#5d4fcf;--b9soft:#1f8f62;--r9soft:#2a68b8;--qisoft:#b87a16;--good:#2e8b57;--warn:#b85c17;--panebg:#fbfbf9;--cardbg:rgba(255,255,255,.88);--hover:#e2e3de;--track:#c9ccc6;--step:#c2c5c0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
+.wrap{max-width:1500px;margin:0 auto;padding-inline:16px;padding-block:28px 48px;display:flex;flex-direction:column;gap:24px}
+header{display:flex;flex-direction:column;gap:6px;position:relative}
+.theme{position:absolute;right:0;top:0;display:flex;align-items:center;gap:7px;font-size:15px;line-height:1;color:var(--muted);cursor:pointer;user-select:none}
+.theme input{position:absolute;opacity:0;width:0;height:0}
+.theme i{width:42px;height:22px;border-radius:11px;background:var(--track);border:1px solid var(--line);position:relative;flex:none;transition:background .15s}
+.theme i::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--fg);transition:left .18s}
+.theme input:checked+i::after{left:23px}
+.theme input:focus-visible+i{outline:2px solid var(--r9soft);outline-offset:2px}
+.theme .sun{opacity:.45}.theme .moon{opacity:1}
+:root[data-theme=light] .theme .sun{opacity:1}:root[data-theme=light] .theme .moon{opacity:.45}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,6vw,52px);line-height:1;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1 .r9{color:var(--b9)} h1 .qi{color:var(--qi)}
+.lede{color:var(--muted);max-width:68ch;margin:0}
+h2{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;margin:0;text-transform:uppercase}
+h3.sec{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:.02em;margin:0;text-transform:uppercase;color:var(--muted)}
+.sub{color:var(--muted);font-size:13px;margin:0;max-width:70ch}
+.bar{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center}
+.bar .lab{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+button,select{font-family:var(--body);font-size:13px;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;max-width:100%}
+button:hover,select:hover{border-color:var(--faint)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--r9soft);outline-offset:2px}
+button.on{border-color:var(--fg);background:var(--hover)}
+button:disabled,select:disabled{opacity:.4;cursor:default}
+button.ico{padding:6px 9px;flex:none}
+.small{font-size:12px;color:var(--muted)}
+/* controls: label · dropdown · switch */
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.opt{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:8px 10px;align-items:center;min-width:0}
+.opt[hidden]{display:none}
+.opt .lab{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.opt .mid{display:flex;gap:6px;align-items:center;min-width:0}
+.opt .mid select{flex:1;min-width:0;width:100%}
+.opt .end{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.dd{position:relative;flex:1;min-width:0}
+.dd>button{width:100%;text-align:left;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.dd>button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu{position:absolute;top:calc(100% + 4px);left:0;z-index:6;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px;min-width:100%;display:flex;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.menu[hidden]{display:none}
+.menu label{display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap}
+.menu label:hover{background:var(--hover)}
+.menu label input{accent-color:#6fd06a;margin:0}
+.menu .acts{display:flex;gap:6px;padding:6px 4px 2px;border-top:1px solid var(--line);margin-top:4px}
+.menu .acts button{font-size:12px;padding:4px 8px}
+.tog{position:relative;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;user-select:none}
+.tog input{position:absolute;opacity:0;width:0;height:0}
+.tog i{width:30px;height:16px;border-radius:8px;background:var(--track);position:relative;flex:none;transition:background .15s}
+.tog i::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--muted);transition:left .15s,background .15s}
+.tog input:checked+i{background:#3f7a52}
+.tog input:checked+i::after{left:16px;background:#fff}
+.tog input:focus-visible+i{outline:2px solid var(--r9soft);outline-offset:2px}
+.tog input:disabled+i{opacity:.4}
+.tog input:disabled~span{opacity:.4}
+/* the three panes, in swing order */
+.view{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.view.c1{grid-template-columns:1fr}
+#stage{grid-column:1/-1;height:clamp(380px,52vh,640px)}
+.pane{position:relative;height:clamp(240px,30vh,400px);border-radius:10px;overflow:hidden;background:var(--panebg);border:1px solid var(--line);min-width:0}
+.pane[hidden]{display:none}
+.pane canvas{width:100%;height:100%;display:block}
+.pane .cap{position:absolute;left:10px;top:9px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);pointer-events:none}
+.pane .step{position:absolute;right:10px;top:8px;font-family:var(--display);font-size:15px;color:var(--step);pointer-events:none}
+#stage{touch-action:none}
+#stage.orbit{cursor:grab}
+#card{position:absolute;left:10px;top:10px;max-width:calc(100% - 20px);background:var(--cardbg);border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.5;pointer-events:none;font-family:var(--mono)}
+#card.multi{display:grid;grid-template-columns:repeat(2,minmax(0,auto));gap:0 14px;font-size:10.5px;line-height:1.4;padding:6px 9px}
+#card.multi .ttl{grid-column:1/-1;font-weight:500;margin-bottom:2px;color:var(--fg)}
+#card .row{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
+#card .sw{width:9px;height:3px;border-radius:2px;flex:none;position:relative;top:-2px;margin:0}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--faint);pointer-events:none;max-width:60%;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);border-left-width:3px;border-radius:6px;padding:4px 9px}
+.chip b{font-weight:500}
+#info{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted)}
+.sw{display:inline-block;width:16px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+table.wide{min-width:940px}
+th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;color:var(--muted)}
+thead th{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;vertical-align:bottom}
+thead th.g1{color:var(--g1soft)} thead th.g2{color:var(--g2soft)} thead th.tl{color:var(--tlsoft)} thead th.pk{color:var(--pksoft)} thead th.v9{color:var(--v9soft)} thead th.b9{color:var(--b9soft)} thead th.r9{color:var(--r9soft)} thead th.qi{color:var(--qisoft)}
+td.best{color:var(--fg);font-weight:500}
+td.up{color:var(--good)} td.down{color:var(--warn)}
+tbody td{font-family:var(--mono);font-size:13px;color:#cfcdc6}
+tbody tr:last-child td{border-bottom:none}
+.tablewrap table th:first-child,.tablewrap table td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+.h2h{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.h2h label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.h2h select{width:100%}
+/* trends: a scrollable, clickable timeline of sessions */
+.prog{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 10px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.ses{flex:0 0 236px;scroll-snap-align:start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:border-color .15s,transform .15s}
+.ses:hover{border-color:var(--faint)}
+.ses.on{border-color:var(--fg);background:var(--panel2)}
+.ses>*{display:block}
+.ses .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.ses .big{font-family:var(--display);font-size:34px;font-weight:700;line-height:1}
+.ses .big small{font-size:16px;font-weight:600;color:var(--muted);margin-left:4px}
+.ses .sub{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.ses .cue{font-size:12px;color:var(--fg);border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
+.ses .d{font-family:var(--mono);font-size:11px}
+.ses .d.up{color:var(--good)} .ses .d.down{color:var(--warn)}
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.detail[hidden]{display:none}
+.detail .head{display:flex;gap:10px 16px;align-items:baseline;flex-wrap:wrap}
+.detail .head h3{margin:0;font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:.02em}
+.detail .head .grow{flex:1}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.strip canvas{width:100%;height:230px;border-radius:10px;background:var(--panebg);border:1px solid var(--line);display:block}
+#cs,#cl{width:100%;height:560px;border-radius:10px;background:var(--panebg);border:1px solid var(--line);display:block}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cwrap{position:relative;min-width:0}
+.tip{position:absolute;pointer-events:none;background:var(--cardbg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-family:var(--mono);font-size:11.5px;line-height:1.45;white-space:nowrap;z-index:4;display:none;max-width:calc(100% - 20px)}
+.tip b{font-weight:500}
+/* notes: status, then a session timeline */
+.status{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.st{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.st .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:4px}
+.st .v{font-family:var(--display);font-size:24px;font-weight:600;line-height:1.1;margin-bottom:6px}
+.st p{margin:0;color:var(--muted);font-size:12.5px}
+.tl{display:flex;flex-direction:column;gap:14px}
+.ev{display:grid;grid-template-columns:150px 1fr;gap:12px 16px;border-top:1px solid var(--line);padding-top:14px}
+.ev .when{display:flex;flex-direction:column;gap:4px}
+.ev .when b{font-family:var(--display);font-size:20px;font-weight:600;line-height:1.1}
+.ev .when .n{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.ev .when .cue{font-size:12px;color:var(--muted)}
+.ev .when button{align-self:flex-start;margin-top:4px;font-size:12px;padding:4px 9px}
+.ev .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;min-width:0}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.note h3{font-size:14px;font-weight:500;margin:0 0 6px}
+.note p{margin:0;color:var(--muted);font-size:13px}
+.method{color:var(--faint);font-size:12px;max-width:80ch;margin:0}
+section{display:flex;flex-direction:column;gap:12px}
+section[hidden]{display:none}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;gap:4px;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:none;background:transparent;border-radius:6px 6px 0 0;padding:8px 14px;font-family:var(--display);font-size:17px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);white-space:nowrap;flex:none}
+.tabs button:hover{color:var(--fg)}
+.tabs button.on{color:var(--fg);box-shadow:inset 0 -2px 0 var(--fg)}
+@media (max-width:900px){.dgrid{grid-template-columns:1fr}.view{grid-template-columns:1fr}.pane{height:min(60vw,360px)}#stage{height:min(80vw,460px)}.ev{grid-template-columns:1fr}#cs{height:min(80vw,560px)}}
+@media (max-width:700px){.ctrl{grid-template-columns:1fr}}
+@media (max-width:560px){h1{font-size:30px}.h2h{grid-template-columns:1fr}.hint{display:none}#card{font-size:11px;max-width:80%}#card.multi{font-size:10px}.strip{grid-template-columns:1fr}.strip canvas{height:210px}.tabs button{font-size:15px;padding:8px 10px}.wrap{gap:18px}.opt{grid-template-columns:52px minmax(0,1fr)}.opt .end{grid-column:2;justify-content:flex-start}}
+</style>
+
+<div class="wrap">
+<header>
+  <label class="theme" title="Light / dark"><span class="sun" aria-hidden="true">☀</span><input type="checkbox" id="theme" role="switch" aria-label="Dark mode" checked><i></i><span class="moon" aria-hidden="true">☾</span></label>
+  <div class="eyebrow">Sim sessions · Sep 24 to Oct 21, 2026 · 221 drives</div>
+  <h1><span class="r9">R9</span> vs <span class="qi">Qi4D Max</span>, shot by shot</h1>
+  <p class="lede">Every drive from eight launch-monitor sessions, in the order it happens: the club's path and face through impact, where the ball met the face, then the flight in 3D. Each session has a highlighted stretch, listed under Notes.</p>
+</header>
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button role="tab" data-t="replay">Replay</button><button role="tab" data-t="compare">Compare</button><button role="tab" data-t="trends">Trends</button><button role="tab" data-t="disp">Dispersion</button><button role="tab" data-t="notes">Notes</button>
+</nav>
+
+<section data-tab="replay">
+  <div class="ctrl">
+    <div class="opt"><span class="lab">Mode</span><div class="mid"><select id="mode" aria-label="Mode"><option value="best">Replay · best stretches</option><option value="all">Replay · every shot</option><option value="race">Ghost race · all sessions</option><option value="h2h">Head-to-head · two groups</option><option value="spray">Landing areas · spray</option></select></div><div class="end"><label class="tog"><input type="checkbox" id="auto" checked><i></i><span>Auto-advance</span></label></div></div>
+    <div class="opt"><span class="lab">Session</span><div class="mid"><div class="dd"><button id="sesbtn" aria-haspopup="true" aria-expanded="false"><span id="seslbl">All sessions</span><span aria-hidden="true">▾</span></button><div class="menu" id="sesmenu" hidden></div></div></div><div class="end"><label class="tog"><input type="checkbox" id="only"><i></i><span>Best stretches only</span></label></div></div>
+    <div class="opt"><span class="lab">Shot</span><div class="mid"><button class="ico" id="pv" aria-label="Previous shot">◀</button><select id="shot" aria-label="Shot"></select><button class="ico" id="nx" aria-label="Next shot">▶</button></div><div class="end"></div></div>
+    <div class="opt"><span class="lab">Filter</span><div class="mid"><select id="filter" aria-label="Shot filter"></select></div><div class="end"><label class="tog"><input type="checkbox" id="pdel" checked><i></i><span>Path &amp; face</span></label><label class="tog"><input type="checkbox" id="pstr" checked><i></i><span>Strike on face</span></label></div></div>
+  </div>
+  <div class="view" id="view">
+    <div class="pane" id="pane-d"><canvas id="cd" role="img" aria-label="Top-down club path and face angle for the selected shot"></canvas><span class="step">1</span></div>
+    <div class="pane" id="pane-f"><canvas id="cf" role="img" aria-label="Strike location on the clubface for the selected shot"></canvas><span class="step">2</span></div>
+    <div class="pane" id="stage"><div id="card"></div><div class="hint" id="hint"></div><span class="step">3</span></div>
+  </div>
+  <div class="ctrl" aria-label="Flight view options">
+    <div class="opt"><span class="lab">Camera</span><div class="mid"><select id="cam" aria-label="Camera"><option value="broadcast">Broadcast</option><option value="chase">Chase ball</option><option value="downrange">Down range</option><option value="landing">Landing area</option><option value="spray">Landing areas, top down</option><option value="top">Top</option><option value="side">Side</option></select></div><div class="end"><label class="tog"><input type="checkbox" id="orbit"><i></i><span>Free orbit</span></label></div></div>
+    <div class="opt"><span class="lab">Ground</span><div class="mid"><select id="fw" aria-label="Fairway width"><option value="20">20 yd fairway</option><option value="25">25 yd fairway</option><option value="30" selected>30 yd fairway</option><option value="35">35 yd fairway</option><option value="40">40 yd fairway</option><option value="50">50 yd fairway</option></select></div><div class="end"><label class="tog"><input type="checkbox" id="fwon" checked><i></i><span>Show fairway</span></label></div></div>
+    <div class="opt" id="grp" hidden><span class="lab">Groups</span><div class="mid"><select id="ha" aria-label="Group A"></select><select id="hb" aria-label="Group B"></select></div><div class="end"><span class="small">A vs B</span></div></div>
+    <div class="opt"><span class="lab">Show</span><div class="mid end" style="justify-content:flex-start"><label class="tog"><input type="checkbox" id="disp" checked><i></i><span>Dispersion 1σ</span></label><label class="tog"><input type="checkbox" id="donly"><i></i><span>Dispersion only (hide other shots)</span></label><label class="tog"><input type="checkbox" id="trails" checked><i></i><span>Other shots</span></label></div><div class="end"></div></div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div id="info"></div>
+  <div class="legend" id="legend"></div>
+</section>
+
+<section data-tab="compare">
+  <h2>Head to head</h2>
+  <p class="sub">Pick any two groups. The table shows the difference, and Head-to-head mode on the Replay tab plays their average flights side by side with both dispersion ellipses. The shot filter applies here too.</p>
+  <div class="h2h">
+    <label>Group A<select id="ga"></select></label>
+    <label>Group B<select id="gb"></select></label>
+  </div>
+  <div class="tablewrap"><table><thead id="hh"></thead><tbody id="hb"></tbody></table></div>
+</section>
+
+<section data-tab="trends">
+  <h2>Session progression</h2>
+  <p class="sub">Oldest on the left. Scroll sideways and click a session to highlight it in the charts and see its numbers against the session before.</p>
+  <div class="prog" id="prog"></div>
+  <div class="detail" id="detail" hidden></div>
+</section>
+
+<section data-tab="trends">
+  <h2>Trend by session</h2>
+  <p class="sub">Filled points are each session's best stretch, hollow points are the whole session. Strike charts cover only the sessions that recorded impact location.</p>
+  <div class="strip">
+    <canvas id="p1" role="img" aria-label="Carry by session"></canvas>
+    <canvas id="p2" role="img" aria-label="Smash factor by session"></canvas>
+    <canvas id="p3" role="img" aria-label="Average miss by session"></canvas>
+    <canvas id="p4" role="img" aria-label="Vertical strike height by session"></canvas>
+    <canvas id="p5" role="img" aria-label="Horizontal strike spread by session"></canvas>
+    <canvas id="p6" role="img" aria-label="Club path and face to target by session"></canvas>
+  </div>
+</section>
+
+<section data-tab="disp">
+  <h2>Dispersion</h2>
+  <p class="sub">Where the ball finished and where it met the face, for the sessions ticked below. Dashed ellipses are whole sessions, solid are best stretches, one standard deviation each. Hover any shot for its numbers.</p>
+  <div class="ctrl">
+    <div class="opt"><span class="lab">Sessions</span><div class="mid"><div class="dd"><button id="sesbtn2" aria-haspopup="true" aria-expanded="false"><span id="seslbl2">All sessions</span><span aria-hidden="true">▾</span></button><div class="menu" id="sesmenu2" hidden></div></div></div><div class="end"><label class="tog"><input type="checkbox" id="smo"><i></i><span>Best stretches only</span></label></div></div>
+    <div class="opt"><span class="lab">Landing</span><div class="mid"><select id="lmet" aria-label="Landing distance"><option value="1">Total distance</option><option value="0">Carry distance</option></select></div><div class="end"><label class="tog"><input type="checkbox" id="smd" checked><i></i><span>Show shots</span></label><label class="tog"><input type="checkbox" id="smr" checked><i></i><span>Ellipses &amp; averages</span></label></div></div>
+  </div>
+  <div class="dgrid">
+    <div class="cwrap"><canvas id="cl" role="img" aria-label="Landing dispersion map"></canvas><div class="tip" id="tipl"></div><div class="chips" id="llg" style="margin-top:8px"></div></div>
+    <div class="cwrap"><canvas id="cs" role="img" aria-label="Clubface impact locations"></canvas><div class="tip" id="tips"></div></div>
+  </div>
+</section>
+
+<section data-tab="compare">
+  <h2>All sessions</h2>
+  <div class="tablewrap"><table class="wide"><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+</section>
+
+<section data-tab="notes">
+  <h2>Where things stand</h2>
+  <p class="sub">As of Oct 23. Eight sessions, 221 drives, two driver heads.</p>
+  <div class="status">
+    <div class="st"><span class="k">Best full session</span><div class="v" style="color:var(--g2soft)">Oct 21 · R9 after 9</div><p>226 carry / 246 total over 31 drives, 2,530 rpm, strike within 1 mm of center, face-to-path +0.5°. The first session where spin, strike and face all sat in the window at once.</p></div>
+    <div class="st"><span class="k">Direction</span><div class="v">Face, not path</div><p>Path is reliably in-to-out (+2 to +4°). The face is what moves: each degree of face-to-path is about 8 yards, and 68 of 81 big misses went right. The low takeaway and trail-shoulder dip both close the face to the path.</p></div>
+    <div class="st"><span class="k">Strike</span><div class="v">Centered vertically</div><p>Early sessions struck 12-15 mm low; Oct 13 after the tee change 6 mm low; Oct 21 centered. Horizontal spread with the shorter shaft on Oct 15 is the open question for the fitting.</p></div>
+    <div class="st"><span class="k">Spin</span><div class="v">2,300-2,800 window</div><p>Spin follows delivered loft (about 190 rpm per degree). The R9 sits in the window when struck center. The Qi4D short-shaft sessions delofted to 10-16° and dropped under 2,000 rpm, which cost carry.</p></div>
+    <div class="st"><span class="k">Equipment</span><div class="v">Regrip the R9 first</div><p>Standard-size grip, leave the length. At the GolfTec fitting: Qi4D Max vs standard at 12°, about 44.5", 60 g stiff mid-launch shaft (Ventus Blue 6-S class). Skip Ventus Black and the Cypher 50.</p></div>
+    <div class="st"><span class="k">Next session</span><div class="v">Warm up before recording</div><p>The cold first 24 drives on Oct 21 looked like the old swing (12 mm low, 3,500 rpm, 22 yards right). Hit ten before the data counts, keep the higher tee, and bring the CSV export so the adapter can replace the screen reads.</p></div>
+  </div>
+  <h3 class="sec">Session by session</h3>
+  <p class="sub" id="stretchlist"></p>
+  <div class="tl">
+    <div class="ev"><div class="when"><b style="color:var(--g2soft)">Oct 21 · R9</b><span class="n">31 drives after 9 sim holes · best 14-20</span><span class="cue">Same R9, same shaft and grip. Centered strike, spin in the window, longest full session yet.</span><button data-open="H">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>Spin and strike landed in the window</h3><p>31 drives averaged 2,530 rpm, vertical strike within 1 mm of center, 1.43 smash, and the group centered on the target line (1 yard right on average). Carry averaged 226 and total 246. Shots 14-31 averaged 232 carry.</p></div>
+      <div class="note"><h3>The face decides where it goes</h3><p>Across 218 drives with club data, offline distance tracks face angle closely (correlation 0.81) and path barely at all (0.23). Path stays within about 1° from swing to swing; the face varies 2-3.5°. Each degree of face-to-path moves the finish about 8 yards.</p></div>
+      <div class="note"><h3>Spin comes from delivered loft</h3><p>Backspin follows spin loft (dynamic loft minus attack angle) at about 190 rpm per degree. Strike height matters less, about 36 rpm per mm. The R9 sessions delivered 18-20° of dynamic loft; the Qi4D short-shaft sessions 10-16°, which is where the low-spin drives came from.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--g1soft)">Oct 21 · R9 warm-up</b><span class="n">24 drives, cold · best 10-13</span><span class="cue">First swings of the day before 9 sim holes: low strikes, face open, spin high.</span><button data-open="G">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>The cold warm-up looked like the old swing</h3><p>The first 24 drives struck 12 mm low, spun 3,500 rpm and missed 22 yards right on average, with the face 1.5° open to the path. Only 21% would have stayed in a 30-yard fairway. That is the pattern to expect from a first tee shot without a routine.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--tlsoft)">Oct 15 pm · Qi4D</b><span class="n">32 drives after 18 sim holes · best 10-14</span><span class="cue">Same move and shorter shaft as the morning. Spin collapsed: face delofted, strikes high.</span><button data-open="F">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>Tightest dispersion of any session</h3><p>32 drives averaged 19 yards from the line, centered 5 yards right, with half of them carrying draw spin. Face-to-path averaged 2.2° and the path was a gentle +1.8°. The move from the lesson held up without the coach watching.</p></div>
+      <div class="note"><h3>Spin collapsed</h3><p>Backspin averaged 1,970 rpm, down from 2,600-3,400 in every other session. Dynamic loft dropped to about 11° (from 17-18°) and strikes averaged 16 mm above center. Nine drives under 1,400 rpm carried only 169 yards despite 146 mph ball speed. Drives with 1,400-2,600 rpm carried 216 and ran out to 250.</p></div>
+      <div class="note"><h3>Fatigue after 18 holes</h3><p>Shots 1-13 averaged 222 carry and 250 total. Shots 20-32 averaged 179 carry. Shots 10-14 were the best five in a row: 229 carry, 257 total, 1.42 smash, face within 1.3° of the path. Shots 6 and 20 are sim club-data misreads and are left out of the club averages.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--pksoft)">Oct 15 am · Qi4D</b><span class="n">17 drives · best 14-17</span><span class="cue">Trail-shoulder dip to keep the hands low; shorter shaft; compact swing. Face started closing from shot 10.</span><button data-open="E">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>The new move closed the face</h3><p>With the trail-shoulder dip, face-to-path went from about +3° on shots 1-9 to about −1.5° on shots 10-17. That is the change the move was meant to make: the face stopped hanging open to the path.</p></div>
+      <div class="note"><h3>Strike moved across the face</h3><p>Six drives were struck 32-51 mm from center horizontally, all on the same side, and averaged 1.30 smash and 174 carry. The ten strikes within 25 mm averaged 1.43 smash and 207 carry. Shorter shaft plus a new move changed where the ball met the face.</p></div>
+      <div class="note"><h3>Path is now reliably in-to-out</h3><p>Every clean drive had a path between +1.4° and +6.3°, averaging about +3.7°. Attack angle averaged +6°, the highest of any session. Shot 6 is a sim misread (77 mph club speed, zero club data) and is left out of the club averages.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--v9soft)">Oct 13 · R9</b><span class="n">21 drives · best 14-21</span><span class="cue">85-90% swing. Tee height settled after a 7-iron break; the second batch starts at shot 14.</span><button data-open="D">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>A higher tee fixed the low strike</h3><p>Shots 1-13 came before a 7 iron break, with tee height still changing. After the break he locked in a higher tee, and attack angle rose from about +3° to +5.5°. Strike moved from 15 mm low to 6 mm low, spin dropped from about 3,400 to 2,600 rpm, and carry jumped from 200 to 229 yards.</p></div>
+      <div class="note"><h3>The push draw showed up</h3><p>On shots 14-21 the path stayed around +3° with the face closed to it by about 1°. Six of the eight had draw spin, and they averaged 1 yard left of the target line.</p></div>
+      <div class="note"><h3>85-90% effort, same speed</h3><p>Club speed still averaged 100 mph, the same as full-effort sessions, and after the break it averaged 102. Shot 14, the first drive after 32 seven irons, went 238 carry and 254 total, struck 3 mm from center.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--b9soft)">Oct 9 · R9</b><span class="n">42 drives · best 33-40</span><span class="cue">Deliberately dropped the trail shoulder to work on the push draw.</span><button data-open="B">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>Shoulder drop moved the path way out</h3><p>Dropping the trail shoulder sent the path well in-to-out: about +8° on shots 1-14. The face followed the path almost exactly, so the ball started right and never curved back. Those drives averaged 44 yards right. That's a push with no draw.</p></div>
+      <div class="note"><h3>Dialed back, it was the longest stretch yet</h3><p>Shots 33-40 had a path around +2° and the face slightly closed to it. They averaged 149 mph ball speed, 1.47 smash, 241 carry and 259 total, with an average miss of 16 yards. That matches the Qi4D's best stretch with the old driver.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--r9soft)">Oct 6 · R9</b><span class="n">34 drives after 9 sim holes · best 23-27</span><span class="cue">Low, pendulum-style takeaway with deep hands to stay slotted.</span><button data-open="R">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>Low takeaway fixed strike and face</h3><p>Shots 23-27 came after adding a deliberate low takeaway. Vertical strike moved to about 1 mm from center and face-to-path tightened to about 1°. The session faded after that, likely from fatigue after 9 sim holes.</p></div>
+    </div></div>
+    <div class="ev"><div class="when"><b style="color:var(--qisoft)">Sep 24 · Qi4D Max 10.5</b><span class="n">20 drives · best 15-20</span><span class="cue">First look at the Qi4D Max with a 60 g stiff shaft, after the GolfTec setup changes.</span><button data-open="Q">Open in replay</button></div><div class="cards">
+      <div class="note"><h3>The baseline</h3><p>The new head with the setup changes from the lesson produced a push draw on the best stretch, but the screen did not capture strike location, attack angle or dynamic loft, so this session anchors the ball-flight comparison only.</p></div>
+    </div></div>
+  </div>
+  <p class="method">Flights are simulated from ball speed, launch, spin and spin axis using drag and spin-driven lift, then anchored to each shot's measured carry, apex and finish. Coefficients are standard approximations, not the simulator's own model. Average flights in Head-to-head mode are the point-by-point mean of the group's simulated flights. Dispersion ellipses are one standard deviation of the finishing positions, so about 40% of shots land inside them; dashed outlines are whole sessions, solid outlines are best stretches. The Sep 24 and Oct 9 screens did not capture strike location, attack angle or dynamic loft, so those are blank for those two sessions. Oct 13 shot 21 was read from the single-shot screen. The sim lists shots by club, so the Oct 13 split between the two driver batches (after shot 13) is inferred from the jump in attack angle and strike height. Horizontal strike is shown as + / − because the sim's toe and heel convention wasn't confirmed.</p>
+</section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);const N=null;
+/*DATA*/
+// r: 0 carry,1 total,2 off,3 apex,4 sideDeg,5 flightSec,6 ballSpd,7 launch,8 back,9 side,10 smash,11 vfi,12 hfi,13 path,14 ftt,15 aoa,16 dynLoft,17 clubSpd
+const SES=[
+ {k:'Q',name:'Qi4D · Sep 24',short:'Qi4D 9/24',tag:'9/24',data:QI,best:[15,20],col:0xe8a33d,line:0x8a7550,hex:'#e8a33d',soft:'#f0c07a',cls:'qi',cue:'Push draw from GolfTec setup changes'},
+ {k:'R',name:'R9 · Oct 6',short:'R9 10/6',tag:'10/6',data:R9,best:[23,27],col:0x3987e5,line:0x5f7794,hex:'#3987e5',soft:'#7fb2f0',cls:'r9',cue:'Low takeaway, after 9 sim holes'},
+ {k:'B',name:'R9 · Oct 9',short:'R9 10/9',tag:'10/9',data:R9B,best:[33,40],col:0x2fbf8a,line:0x5f8a7a,hex:'#2fbf8a',soft:'#8fe0c0',cls:'b9',cue:'Dropped the trail shoulder for a push draw'},
+ {k:'D',name:'R9 · Oct 13',short:'R9 10/13',tag:'10/13',data:R9C,best:[14,21],col:0x9085e9,line:0x7d7a92,hex:'#9085e9',soft:'#bdb6f5',cls:'v9',cue:'85-90% swing; higher tee locked in after a 7 iron break (from shot 14)'},
+ {k:'E',name:'Qi4D · Oct 15 am',short:'Qi4D 10/15a',tag:'10/15a',data:QI2,best:[14,17],col:0xe0608a,line:0x8a5a68,hex:'#e0608a',soft:'#f3a3bf',cls:'pk',cue:'Trail shoulder dip to keep hands low; shorter shaft; compact swing. Face started closing from shot 10'},
+ {k:'F',name:'Qi4D · Oct 15 pm',short:'Qi4D 10/15p',tag:'10/15p',data:QI3,best:[10,14],col:0x35b7c9,line:0x4f7f88,hex:'#35b7c9',soft:'#8fdbe8',cls:'tl',cue:'Same move and shorter shaft, after 18 sim holes. Spin collapsed: face delofted, strikes high'},
+ {k:'G',name:'R9 · Oct 21 warm-up',short:'R9 10/21wu',tag:'10/21w',data:D21A,best:[10,13],col:0xb58b5a,line:0x7d6a55,hex:'#b58b5a',soft:'#dcbf98',cls:'g1',cue:'Cold warm-up before 9 sim holes: low strikes, face open, spin high'},
+ {k:'H',name:'R9 · Oct 21',short:'R9 10/21',tag:'10/21',data:D21B,best:[14,20],col:0x6fd06a,line:0x5a8a58,hex:'#6fd06a',soft:'#aee8aa',cls:'g2',cue:'After 9 sim holes: centered strike, spin in the window, longest full session yet'}];
+const NEWEST=SES.slice().reverse();
+const byK=k=>SES.find(s=>s.k===k);
+const avg=(a,f)=>a.length?a.reduce((s,x)=>s+f(x),0)/a.length:NaN;
+const FILTERS={all:{l:'All shots',f:()=>true},center:{l:'Centered strikes (±5 mm)',f:r=>r[11]!=null&&Math.abs(r[11])<=5},draw:{l:'Draw spin',f:r=>r[9]<-150},fade:{l:'Fade spin',f:r=>r[9]>150},up:{l:'Attack angle ≥ 5°',f:r=>r[15]!=null&&r[15]>=5},thin:{l:'Thin (launch ≤ 6°)',f:r=>r[7]<=6}};
+const fmt=x=>(x>0?'+':'')+x;
+
+// ---------- physics ----------
+const D2R=Math.PI/180,RB=.02135,K=1.225*Math.PI*RB*RB/(2*.04593),YD=1/.9144,EX=1.5,NP=120;
+function simulate(r){const V=r[6]*.44704,la=r[7]*D2R,dir=r[4]*D2R,b=r[8],sd=r[9],wm=Math.hypot(b,sd)||1;
+const ax=[-b/wm,sd/wm,0],w0=wm*2*Math.PI/60;let p=[0,0,0],v=[V*Math.cos(la)*Math.sin(dir),V*Math.sin(la),V*Math.cos(la)*Math.cos(dir)],t=0,dt=.005;const raw=[[0,0,0]];
+while(t<14){const s=Math.hypot(v[0],v[1],v[2]),w=w0*Math.exp(-t/22),S=RB*w/s,Cd=.21+.25*S,Cl=Math.max(0,Math.min(.32,1.99*S-3.25*S*S));
+const c=[ax[1]*v[2]-ax[2]*v[1],ax[2]*v[0]-ax[0]*v[2],ax[0]*v[1]-ax[1]*v[0]];
+v=[v[0]+(-K*Cd*s*v[0]+K*Cl*s*c[0])*dt,v[1]+(-K*Cd*s*v[1]+K*Cl*s*c[1]-9.81)*dt,v[2]+(-K*Cd*s*v[2]+K*Cl*s*c[2])*dt];
+const q=[p[0]+v[0]*dt,p[1]+v[1]*dt,p[2]+v[2]*dt];t+=dt;
+if(q[1]<0&&t>.05){const f=p[1]/(p[1]-q[1]);raw.push([p[0]+(q[0]-p[0])*f,0,p[2]+(q[2]-p[2])*f]);break}p=q;raw.push(p)}
+const out=[];for(let i=0;i<NP;i++){const j=Math.round(i*(raw.length-1)/(NP-1));out.push(raw[j].map(x=>x*YD))}return out}
+
+// ---------- scene ----------
+const stage=$('stage'),card=$('card'),view=$('view');
+const WHITE=0xf2f1ec,BG=0x14161a;
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));stage.insertBefore(renderer.domElement,stage.firstChild);
+const scene=new THREE.Scene();scene.background=new THREE.Color(BG);scene.fog=new THREE.Fog(BG,380,760);
+const camera=new THREE.PerspectiveCamera(50,1,.3,2000);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(260,420),new THREE.MeshBasicMaterial({color:0x1a231d}));ground.rotation.x=-Math.PI/2;ground.position.set(0,0,-160);scene.add(ground);
+const fwMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,330),new THREE.MeshBasicMaterial({color:0x223328}));fwMesh.rotation.x=-Math.PI/2;fwMesh.position.set(0,.05,-165);fwMesh.scale.x=30;scene.add(fwMesh);
+const fwEdges=[-1,1].map(s=>{const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(s,.08,0),new THREE.Vector3(s,.08,-330)]),new THREE.LineBasicMaterial({color:0x33483a}));l.scale.x=15;scene.add(l);return l});
+const cl=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,.1,0),new THREE.Vector3(0,.1,-330)]),new THREE.LineDashedMaterial({color:0x56645a,dashSize:4,gapSize:4}));cl.computeLineDistances();scene.add(cl);
+function label(t){const c=document.createElement('canvas');c.width=256;c.height=96;const x=c.getContext('2d');x.font='bold 52px system-ui,sans-serif';x.fillStyle='#8f9a92';x.textAlign='center';x.textBaseline='middle';x.fillText(t,128,48);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));s.scale.set(16,6,1);return s}
+const gridLines=[];[50,100,150,200,250,300].forEach(d=>{const gl=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-80,.1,-d),new THREE.Vector3(80,.1,-d)]),new THREE.LineBasicMaterial({color:0x2f3d33}));gridLines.push(gl);scene.add(gl);const l=label(d+'');l.position.set(-90,3,-d);scene.add(l);const r=label(d+'');r.position.set(90,3,-d);scene.add(r)});
+const lL=label('LEFT');lL.position.set(-45,3,-20);scene.add(lL);const lR=label('RIGHT');lR.position.set(45,3,-20);scene.add(lR);
+function meshesFor(pts,land,rest,off,total,col,lineCol,hot,radius){
+const len=[0];for(let k=1;k<NP;k++)len.push(len[k-1]+pts[k].distanceTo(pts[k-1]));
+const thin=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:hot?col:lineCol,transparent:true,opacity:hot?.75:.3}));
+const tube=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),100,radius,8,false),new THREE.MeshBasicMaterial({color:hot?col:WHITE}));tube.visible=false;
+const roll=new THREE.Line(new THREE.BufferGeometry().setFromPoints([land,rest]),new THREE.LineDashedMaterial({color:hot?col:lineCol,dashSize:2,gapSize:2}));roll.computeLineDistances();
+const ring=new THREE.Mesh(new THREE.RingGeometry(1.4,2.3,28),new THREE.MeshBasicMaterial({color:hot?col:lineCol,side:THREE.DoubleSide,transparent:true,opacity:hot?.9:.4}));ring.rotation.x=-Math.PI/2;ring.position.set(off,.2,-total);
+[thin,tube,roll,ring].forEach(o=>scene.add(o));return {len,thin,tube,roll,ring}}
+function build(r,i,S){const [carry,total,off,H]=r,n=i+1,hot=n>=S.best[0]&&n<=S.best[1],L=simulate(r),e=L[NP-1],zl=e[2],xl=e[0],ap=Math.max(...L.map(p=>p[1]));
+const sz=carry/zl,sy=H/Math.max(ap,.5),Lc=off*carry/total;
+const pts=L.map(p=>{const u=p[2]/zl;return new THREE.Vector3(p[0]*sz+(Lc-xl*sz)*u*u,.6+EX*p[1]*sy,-p[2]*sz)});
+const land=pts[NP-1].clone();land.y=.6;const rest=new THREE.Vector3(off,.6,-total);
+const m=meshesFor(pts,land,rest,off,total,S.col,S.line,hot,.7);
+return Object.assign({S,n,hot,r,pts,land,rest,fd:r[5]*.6,dir:new THREE.Vector3(0,0,-1),label:`${S.short} #${n}`},m)}
+SES.forEach(S=>{S.shots=S.data.map((r,i)=>build(r,i,S))});
+const ALL=SES.flatMap(S=>S.shots);
+const balls=[0,1,2,3,4,5,6,7].map(()=>{const b=new THREE.Mesh(new THREE.SphereGeometry(1.3,16,12),new THREE.MeshBasicMaterial({color:0xffffff}));const g=new THREE.Mesh(new THREE.SphereGeometry(3.6,16,12),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false}));b.add(g);b.visible=false;scene.add(b);return b});
+
+// ---------- state ----------
+let mode='replay',modeSel='best',filter='all',only=false,showDisp=true,dispOnly=false,fwW=30,autoAdv=true,showTrails=true;const sel=new Set(SES.map(S=>S.k));
+let runners=[],tau=0,playlist=null,cur=null,focus=null,h2hA='F:all',h2hB='H:all';
+const IMP=.9,RD=1.1,HOLD=1.4,slow=matchMedia('(prefers-reduced-motion: reduce)').matches?.5:1;
+const F=()=>FILTERS[filter].f;
+const group=(S,scope)=>S.shots.filter(q=>(scope==='all'||q.hot)&&F()(q.r));
+const parseG=v=>{const [k,sc]=v.split(':');return {S:byK(k),scope:sc}};
+function sesVisible(S){if(mode==='h2h')return S===parseG(h2hA).S||S===parseG(h2hB).S;return sel.has(S.k)}
+function dispGroups(){const out=[];if(mode==='h2h'){[h2hA,h2hB].forEach(v=>{const g=parseG(v);out.push({S:g.S,scope:g.scope,rows:group(g.S,g.scope)})})}
+else if(mode==='spray')SES.forEach(S=>{if(!sesVisible(S))return;if(!only)out.push({S,scope:'all',rows:group(S,'all')});out.push({S,scope:'best',rows:group(S,'best')})});
+else SES.forEach(S=>{if(!sesVisible(S))return;const scope=(mode==='race'||only)?'best':'all';out.push({S,scope,rows:group(S,scope)})});return out}
+
+// ---------- average flights and ellipses (cached) ----------
+const AVG=new Map(),ELL=new Map();
+function avgShot(S,scope){const key=S.k+scope+filter;if(AVG.has(key))return AVG.get(key);const g=group(S,scope);if(!g.length){AVG.set(key,null);return null}
+const r=[];for(let i=0;i<18;i++){const v=g.map(q=>q.r[i]).filter(x=>x!=null);r.push(v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(i===10?2:1):null)}
+const pts=[];for(let k=0;k<NP;k++){const p=new THREE.Vector3();g.forEach(q=>p.add(q.pts[k]));p.multiplyScalar(1/g.length);pts.push(p)}
+const land=pts[NP-1].clone();land.y=.6;const rest=new THREE.Vector3(r[2],.6,-r[1]);
+const m=meshesFor(pts,land,rest,r[2],r[1],S.col,S.line,true,1.1);m.thin.visible=false;m.roll.visible=false;m.ring.visible=false;
+const o=Object.assign({S,n:'avg',hot:true,isAvg:true,r,pts,land,rest,fd:avg(g,q=>q.fd),dir:new THREE.Vector3(0,0,-1),group:g,scope,label:`${S.short} ${scope} avg (${g.length})`},m);AVG.set(key,o);return o}
+function ellipse(S,scope){const key=S.k+scope+filter;if(ELL.has(key))return ELL.get(key);const g=group(S,scope);if(g.length<3){ELL.set(key,null);return null}
+const xs=g.map(q=>q.r[2]),zs=g.map(q=>q.r[1]),n=g.length,mx=xs.reduce((a,b)=>a+b)/n,mz=zs.reduce((a,b)=>a+b)/n;let sxx=0,sxz=0,szz=0;
+for(let i=0;i<n;i++){const dx=xs[i]-mx,dz=zs[i]-mz;sxx+=dx*dx;sxz+=dx*dz;szz+=dz*dz}sxx/=n-1;sxz/=n-1;szz/=n-1;
+const tr=sxx+szz,det=sxx*szz-sxz*sxz,disc=Math.sqrt(Math.max(0,tr*tr/4-det)),l1=tr/2+disc,l2=Math.max(tr/2-disc,.25);
+const ang=Math.abs(sxz)<1e-6?(sxx>=szz?0:Math.PI/2):Math.atan2(l1-sxx,sxz);const a=Math.sqrt(l1),b=Math.sqrt(l2);
+const best=scope==='best';
+const shape=new THREE.Shape().absellipse(mx,mz,a,b,0,Math.PI*2,false,ang);
+const fill=new THREE.Mesh(new THREE.ShapeGeometry(shape,48),new THREE.MeshBasicMaterial({color:S.col,transparent:true,opacity:best?.22:.1,depthWrite:false,side:THREE.DoubleSide}));fill.rotation.x=-Math.PI/2;fill.position.y=best?.13:.12;
+const pts=new THREE.EllipseCurve(mx,mz,a,b,0,Math.PI*2,false,ang).getPoints(72).map(p=>new THREE.Vector3(p.x,.14,-p.y));
+const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),best?new THREE.LineBasicMaterial({color:S.col,transparent:true,opacity:.9}):new THREE.LineDashedMaterial({color:S.col,transparent:true,opacity:.7,dashSize:3,gapSize:3}));if(!best)line.computeLineDistances();
+const mark=new THREE.Mesh(new THREE.RingGeometry(best?1.6:1.2,best?2.8:1.9,24),new THREE.MeshBasicMaterial({color:S.col,side:THREE.DoubleSide,transparent:true,opacity:best?1:.7}));mark.rotation.x=-Math.PI/2;mark.position.set(mx,.18,-mz);
+const cross=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(mx-4,.18,-mz),new THREE.Vector3(mx+4,.18,-mz),new THREE.Vector3(mx,.18,-mz-4),new THREE.Vector3(mx,.18,-mz+4)]),new THREE.LineBasicMaterial({color:S.col}));
+const o={fill,line,mark,cross,mx,mz,a,b,n,best};[fill,line,mark,cross].forEach(m=>{m.visible=false;scene.add(m)});ELL.set(key,o);return o}
+function refreshDisp(){ELL.forEach(e=>{if(e)[e.fill,e.line,e.mark,e.cross].forEach(m=>m.visible=false)});
+const gs=dispGroups();if(showDisp||dispOnly||mode==='spray')gs.forEach(g=>{const e=ellipse(g.S,g.scope);if(e){[e.fill,e.line,e.mark].forEach(m=>m.visible=true);e.cross.visible=e.best||mode!=='spray'}});
+$('chips').innerHTML=gs.map(g=>{const n=g.rows.length,h=g.rows.filter(q=>Math.abs(q.r[2])<=fwW/2).length;return `<span class="chip" style="border-left-color:${g.S.hex}"><b style="color:var(--${g.S.cls}soft)">${g.S.short} · ${g.scope==='best'?'best '+g.S.best[0]+'-'+g.S.best[1]:'all'}</b> · ${n?Math.round(h/n*100)+'% in a '+fwW+' yd fairway ('+h+'/'+n+')':'no shots match this filter'}</span>`}).join('')}
+
+// ---------- runners ----------
+function hideTubes(){ALL.forEach(q=>{q.tube.visible=false});AVG.forEach(a=>{if(a){a.tube.visible=false;a.roll.visible=false;a.ring.visible=false}})}
+function startRunners(list){hideTubes();runners=list;tau=0;focus=list[0]||null;runners.forEach(R=>R.tube.geometry.setDrawRange(0,0));renderCard();renderInfo()}
+const sideTxt=(v,round)=>{const a=round?Math.round(Math.abs(v)):Math.abs(v);return v>0?a+' R':v<0?a+' L':'on line'};
+function renderCard(){card.classList.toggle('multi',mode==='race'||mode==='spray');
+if(mode==='spray'){const gs=dispGroups().filter(g=>ellipse(g.S,g.scope));card.innerHTML=`<div class="ttl">Landing areas · 1σ ellipses · ${only?'best stretches':'dashed whole session, solid best stretch'}</div>`+gs.filter(g=>g.scope==='best'||only).map(g=>{const e=ellipse(g.S,'best'),ea=only?null:ellipse(g.S,'all');const sz=e=>e?Math.round(2*e.b)+'×'+Math.round(2*e.a)+' yd':'n/a';return `<div class="row"><span class="sw" style="background:${g.S.hex}"></span><span style="color:var(--${g.S.cls}soft)">${g.S.short}</span><span>${ea?'all '+sz(ea)+' · ':''}best ${sz(e)}</span></div>`}).join('');return}
+if(!runners.length){card.innerHTML='<div>No shots match this filter</div>';return}
+if(mode==='replay'){const s=runners[0],r=s.r;card.innerHTML=`<div style="font-weight:500;${s.hot?'color:'+s.S.soft:''}">${s.S.name} · Shot ${s.n}${s.hot?' · best stretch':''}</div><div>${r[0]} carry · ${r[1]} total · ${sideTxt(r[2])}</div>`;return}
+if(mode==='race'){card.innerHTML='<div class="ttl">Ghost race · typical best-stretch drive</div>'+runners.map(R=>`<div class="row"><span class="sw" style="background:${R.S.hex}"></span><span style="color:var(--${R.S.cls}soft)">${R.S.short}</span><span>${Math.round(R.r[0])}/${Math.round(R.r[1])} · ${sideTxt(R.r[2],true)}</span></div>`).join('');return}
+card.innerHTML=`<div style="font-weight:500;margin-bottom:2px">Head-to-head · average flights</div>`+runners.map(R=>`<div class="row"><span class="sw" style="background:${R.S.hex}"></span><span style="color:var(--${R.S.cls}soft)">${R.label}</span><span>${Math.round(R.r[0])} / ${Math.round(R.r[1])} · ${sideTxt(R.r[2],true)}</span></div>`).join('')}
+function renderInfo(){const s=focus;if(!s){$('info').textContent=mode==='spray'?'Spray view: ellipses are one standard deviation of finishing positions, so about 40% of each group lands inside. Compare the shapes, not the dots.':'';return}const r=s.r;
+if(!s.isAvg){const sh=$('shot'),v=s.S.k+':'+(s.n-1);if([...sh.options].some(o=>o.value===v))sh.value=v}
+$('info').textContent=(s.isAvg?'Group average · ':s.S.name+' #'+s.n+' · ')+r[17]+' mph club · '+r[6]+' mph ball · '+r[7]+'° launch · '+Math.round(r[8])+' rpm back · '+fmt(Math.round(r[9]))+' rpm side · smash '+r[10]+(r[15]!=null?' · AoA '+fmt(r[15])+'°':'')+(r[16]!=null?' · dyn loft '+r[16]+'°':'')}
+function select(s,keep){cur=s;if(!keep)playlist=null;startRunners([s])}
+function playBest(){const lists=SES.filter(sesVisible).map(S=>group(S,'best')),pl=[];const m=Math.max(0,...lists.map(l=>l.length));for(let i=0;i<m;i++)lists.forEach(l=>{if(l[i])pl.push(l[i])});playlist=pl;if(pl.length)select(pl[0],true);else startRunners([])}
+function playAll(){playlist=ALL.filter(q=>sesVisible(q.S)&&F()(q.r));if(playlist.length)select(playlist[0],true);else startRunners([])}
+function repShot(S){const g=group(S,'best');if(!g.length)return null;const mc=avg(g,q=>q.r[0]),mo=avg(g,q=>q.r[2]),sc=q=>Math.abs(q.r[0]-mc)+Math.abs(q.r[2]-mo);return g.slice().sort((a,b)=>sc(a)-sc(b))[0]}
+function setMode(m){modeSel=m;mode=(m==='best'||m==='all')?'replay':m;$('mode').value=m;
+const rep=mode==='replay';['pv','nx','shot'].forEach(id=>$(id).disabled=!rep);$('auto').disabled=!rep;$('grp').hidden=mode!=='h2h';
+if(mode==='replay')(m==='best'?playBest:playAll)();else if(mode==='race')startRunners(SES.filter(sesVisible).map(repShot).filter(Boolean));else if(mode==='h2h')startRunners([avgShot(parseG(h2hA).S,parseG(h2hA).scope),avgShot(parseG(h2hB).S,parseG(h2hB).scope)].filter(Boolean));
+else{startRunners([]);if(!['spray','top','landing'].includes(camMode))setCam('spray')}
+if(mode!=='spray'&&camMode==='spray')setCam('broadcast');
+refreshDisp();layoutView()}
+function setSel(keys){sel.clear();keys.forEach(k=>sel.add(k));renderSesMenu();fillShots();drawStrikeMap();drawLanding();if(mode==='replay'){(modeSel==='best'?playBest:playAll)();refreshDisp()}else if(mode==='h2h')setMode('best');else{setMode(modeSel)}}
+function setSes(k){setSel([k])}
+const MENUS=[['sesbtn','sesmenu','seslbl'],['sesbtn2','sesmenu2','seslbl2']];
+function renderSesMenu(){const n=sel.size,lbl=n===SES.length?'All sessions':n===0?'No sessions':n===1?byK([...sel][0]).name:n+' of '+SES.length+' sessions';
+MENUS.forEach(([bt,mn,lb])=>{$(lb).textContent=lbl;const m=$(mn);
+m.innerHTML=NEWEST.map(S=>`<label><input type="checkbox" data-k="${S.k}" ${sel.has(S.k)?'checked':''}><span class="sw" style="background:${S.hex};margin:0"></span>${S.name}</label>`).join('')+'<div class="acts"><button data-act="all">All</button><button data-act="none">None</button><button data-act="r9">R9 only</button><button data-act="qi">Qi4D only</button></div>';
+m.querySelectorAll('input').forEach(c=>c.onchange=()=>{const k=c.dataset.k;setSel(SES.map(S=>S.k).filter(x=>x===k?c.checked:sel.has(x)));openMenu(mn,true)});
+m.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const a=b.dataset.act;setSel(SES.filter(S=>a==='all'||(a==='r9'&&S.name.startsWith('R9'))||(a==='qi'&&S.name.startsWith('Qi4D'))).map(S=>S.k));openMenu(mn,true)})})}
+function openMenu(id,on){MENUS.forEach(([bt,mn])=>{const o=on&&mn===id;$(mn).hidden=!o;$(bt).setAttribute('aria-expanded',o)})}
+function fillShots(){const sh=$('shot'),vis=NEWEST.filter(S=>sel.has(S.k)),opt=S=>S.shots.map((q,i)=>`<option value="${S.k}:${i}">${vis.length>1?S.short+' ':''}#${q.n}${q.hot?' ★':''}</option>`).join('');
+sh.innerHTML=vis.length>1?vis.map(S=>`<optgroup label="${S.name}">${opt(S)}</optgroup>`).join(''):vis.map(opt).join('')}
+function layoutView(){const spray=mode==='spray',d=$('pdel').checked&&!spray,f=$('pstr').checked&&!spray;$('pane-d').hidden=!d;$('pane-f').hidden=!f;view.classList.toggle('c1',d+f<2);requestAnimationFrame(resize)}
+function trailVisible(q){if(runners.includes(q)||!F()(q.r))return false;
+if(mode==='spray')return false;if(mode==='replay')return sesVisible(q.S)&&(!only||q.hot);if(mode==='race')return q.hot;
+const A=parseG(h2hA),B=parseG(h2hB);return (q.S===A.S&&(A.scope==='all'||q.hot))||(q.S===B.S&&(B.scope==='all'||q.hot))}
+function advance(){if(mode==='replay'&&autoAdv&&playlist&&playlist.length){const k=playlist.indexOf(runners[0]);select(playlist[(k+1)%playlist.length],true)}else{tau=0;runners.forEach(R=>R.tube.geometry.setDrawRange(0,0))}}
+function update(dt){tau+=dt;let done=true;
+ALL.forEach(q=>{const v=trailVisible(q)&&!dispOnly;q.thin.visible=v&&showTrails;q.roll.visible=v&&showTrails;q.ring.visible=v});
+balls.forEach((b,i)=>{b.visible=i<runners.length});
+runners.forEach((R,i)=>{const b=balls[i];b.children[0].material.color.setHex(R.S.col);b.children[0].visible=R.hot;R.tube.visible=true;R.ring.visible=true;const ft=tau-IMP;
+if(ft<0){b.position.set(0,.6,0);R.tube.geometry.setDrawRange(0,0);R.roll.visible=false;R.dir.set(0,0,-1);done=false}
+else if(ft<R.fd){const f=ft/R.fd*(NP-1),k=Math.floor(f),k2=Math.min(k+1,NP-1);b.position.lerpVectors(R.pts[k],R.pts[k2],f-k);R.dir.subVectors(R.pts[k2],R.pts[k]).setY(0).normalize();
+const L=R.len[k]+(R.len[k2]-R.len[k])*(f-k);R.tube.geometry.setDrawRange(0,Math.floor(L/R.len[NP-1]*100)*48);R.roll.visible=false;done=false}
+else{R.tube.geometry.setDrawRange(0,4800);const q=Math.min((ft-R.fd)/RD,1),e=1-Math.pow(1-q,3);b.position.lerpVectors(R.land,R.rest,e);R.dir.subVectors(R.rest,R.land).setY(0).normalize();R.roll.visible=true;if(ft<R.fd+RD+HOLD)done=false}});
+if(done&&runners.length)advance()}
+
+// ---------- camera rig ----------
+const PRESETS={broadcast:{pos:[2,9,24],look:[0,12,-160],hint:'Fixed broadcast view behind the tee'},downrange:{pos:[0,11,-318],look:[0,9,-110],hint:'Looking back toward the tee, so right misses appear on the left'},landing:{pos:[-72,48,-192],look:[0,0,-243],hint:'Above the landing area, 200 to 270 yards'},spray:{pos:[0,250,-228],look:[0,0,-228],up:[0,0,-1],hint:'Top down over the landing areas, 150 to 300 yards'},top:{pos:[0,330,-150],look:[0,0,-150],up:[0,0,-1],hint:'Top down'},side:{pos:[-250,45,-135],look:[0,18,-135],hint:'Side on'},chase:{hint:'Following the ball'}};
+let camMode='broadcast',orbit=false,drag=null;const sph={r:200,th:0,ph:1.3};
+const cam={pos:new THREE.Vector3(2,9,24),look:new THREE.Vector3(0,12,-160),up:new THREE.Vector3(0,1,0)},tgt={pos:cam.pos.clone(),look:cam.look.clone(),up:cam.up.clone()};
+function setCam(v){camMode=v;orbit=false;$('cam').value=v;$('orbit').checked=false;stage.classList.remove('orbit');$('hint').textContent=PRESETS[v].hint+(v==='chase'?'':' · Free orbit lets you drag')}
+function setOrbit(on){orbit=on;if(orbit){const v=new THREE.Vector3().subVectors(cam.pos,cam.look);sph.r=v.length();sph.ph=Math.acos(Math.min(1,Math.max(-1,v.y/sph.r)));sph.th=Math.atan2(v.x,v.z);tgt.look.copy(cam.look);tgt.up.set(0,1,0);$('hint').textContent='Drag to orbit, scroll to zoom'}else setCam(camMode==='chase'?'broadcast':camMode);
+$('orbit').checked=orbit;stage.classList.toggle('orbit',orbit)}
+function camStep(dt){let k;
+if(orbit){tgt.pos.set(tgt.look.x+sph.r*Math.sin(sph.ph)*Math.sin(sph.th),tgt.look.y+sph.r*Math.cos(sph.ph),tgt.look.z+sph.r*Math.sin(sph.ph)*Math.cos(sph.th));k=drag?1:1-Math.exp(-dt*8)}
+else if(camMode==='chase'){const b=balls[0].position,d=runners[0]?runners[0].dir:new THREE.Vector3(0,0,-1);tgt.pos.set(b.x-d.x*32,b.y*.7+9,b.z-d.z*32);tgt.look.set(b.x+d.x*40,Math.max(b.y*.5,2),b.z+d.z*40);tgt.up.set(0,1,0);k=1-Math.exp(-dt*3.5)}
+else{const P=PRESETS[camMode];tgt.pos.set(...P.pos);tgt.look.set(...P.look);tgt.up.set(...(P.up||[0,1,0]));k=1-Math.exp(-dt*4)}
+cam.pos.lerp(tgt.pos,k);cam.look.lerp(tgt.look,k);cam.up.lerp(tgt.up,k).normalize();camera.position.copy(cam.pos);camera.up.copy(cam.up);camera.lookAt(cam.look)}
+const el=renderer.domElement;
+el.addEventListener('pointerdown',e=>{if(!orbit)return;drag={x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId)});
+el.addEventListener('pointermove',e=>{if(!drag)return;sph.th-=(e.clientX-drag.x)*.006;sph.ph=Math.min(1.55,Math.max(.05,sph.ph-(e.clientY-drag.y)*.006));drag={x:e.clientX,y:e.clientY}});
+el.addEventListener('pointerup',()=>drag=null);el.addEventListener('pointercancel',()=>drag=null);
+el.addEventListener('wheel',e=>{if(!orbit)return;e.preventDefault();sph.r=Math.min(600,Math.max(40,sph.r*(1+e.deltaY*.001)))},{passive:false});
+
+// ---------- theme ----------
+const PAL={dark:{fg:'#f2f1ec',text:'#b9b8b1',muted:'#8a929a',faint:'#6f7880',axis:'#9aa2a8',empty:'#9aa39c',ghost:'#4b545c',grid:'#2c2c2a',cross:'#5d666e',face:'#1f2429',faceEdge:'#454b52',groove:'#2e353c',ring:'#3a434c',dash:'#3d4650',bg:'#14161a',turf:'#1a231d',fw:'#223328',turfGrid:'#2f3d33',center:'#56645a',neutral:'#8a8a85',ball:'#fff',good:'#7fd18f',warn:'#e9a36b',halo:'rgba(242,241,236,.4)',flashRGB:'rgba(255,255,255,',band:'rgba(236,234,228,.07)',ink:0xf2f1ec,bg3:0x14161a,turf3:0x1a231d,fw3:0x223328,edge3:0x33483a,grid3:0x2f3d33,center3:0x56645a,ball3:0xffffff,lbl:'#8f9a92'},
+light:{fg:'#1a1d21',text:'#3d434a',muted:'#5e666e',faint:'#7c848c',axis:'#5e666e',empty:'#6f777e',ghost:'#9aa2a8',grid:'#e1e3e0',cross:'#8a929a',face:'#e6e8e6',faceEdge:'#b4bab6',groove:'#cfd4d0',ring:'#b4bab6',dash:'#b4bab6',bg:'#fbfbf9',turf:'#e1ebe0',fw:'#cfe1cf',turfGrid:'#b7cbb7',center:'#7f9a80',neutral:'#7a7a76',ball:'#1a1d21',good:'#2e8b57',warn:'#b85c17',halo:'rgba(26,29,33,.4)',flashRGB:'rgba(26,29,33,',band:'rgba(26,29,33,.06)',ink:0x2a2e33,bg3:0xfbfbf9,turf3:0xdfeadf,fw3:0xcfe1cf,edge3:0xa9c2a9,grid3:0xb7cbb7,center3:0x7f9a80,ball3:0x1a1d21,lbl:'#5f7a62'}};
+let C=PAL.dark;
+function applyTheme(t){C=PAL[t];document.documentElement.setAttribute('data-theme',t);$('theme').checked=t==='dark';
+SES.forEach(S=>S.lab=t==='dark'?S.soft:S.hex);
+scene.background.setHex(C.bg3);scene.fog.color.setHex(C.bg3);ground.material.color.setHex(C.turf3);fwMesh.material.color.setHex(C.fw3);fwEdges.forEach(l=>l.material.color.setHex(C.edge3));cl.material.color.setHex(C.center3);gridLines.forEach(l=>l.material.color.setHex(C.grid3));
+ALL.forEach(q=>{if(!q.hot)q.tube.material.color.setHex(C.ink)});balls.forEach(b=>b.material.color.setHex(C.ball3));
+try{localStorage.setItem('replay-theme',t)}catch(e){}if(typeof resize==='function')resize()}
+$('theme').onchange=e=>applyTheme(e.target.checked?'dark':'light');
+// ---------- 2D canvases ----------
+const cf=$('cf'),cd=$('cd'),cs=$('cs'),xf=cf.getContext('2d'),xd=cd.getContext('2d'),xs=cs.getContext('2d');
+const PC=['p1','p2','p3','p4','p5','p6'].map(id=>$(id));
+function fit(c){const b=c.getBoundingClientRect(),d=Math.min(devicePixelRatio,2),x=c.getContext('2d');c.width=Math.max(1,b.width*d);c.height=Math.max(1,b.height*d);x.setTransform(d,0,0,d,0,0);return [b.width,b.height]}
+let FW,FH,DW,DH;
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();[FW,FH]=fit(cf);[DW,DH]=fit(cd);drawStrip();drawStrikeMap();drawLanding()}
+const txt=(x,t,px,py,c,sz,al)=>{x.fillStyle=c||C.text;x.font=(sz||11)+'px "IBM Plex Mono",ui-monospace,monospace';x.textAlign=al||'left';x.fillText(t,px,py)};
+function faceBase(x,w,h,top){const cx=w/2,cy=(h+(top||0))/2,sc=Math.max(.05,Math.min(w*.42/60,(h-(top||0))*.38/29)),rx=60*sc,ry=29*sc;
+x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);x.fillStyle=C.face;x.fill();x.strokeStyle=C.faceEdge;x.lineWidth=1.5;x.stroke();
+x.strokeStyle=C.groove;x.lineWidth=1;for(let k=-3;k<=3;k++){const yy=cy+k*7*sc,half=rx*Math.sqrt(Math.max(0,1-Math.pow((yy-cy)/ry,2)))*.8;x.beginPath();x.moveTo(cx-half,yy);x.lineTo(cx+half,yy);x.stroke()}
+const ch=Math.max(8,2.5*sc);x.strokeStyle=C.cross;x.beginPath();x.moveTo(cx-ch,cy);x.lineTo(cx+ch,cy);x.moveTo(cx,cy-ch);x.lineTo(cx,cy+ch);x.stroke();
+if(sc>3){x.strokeStyle=C.ring;x.setLineDash([2,4]);[10,20].forEach(mm=>{x.beginPath();x.ellipse(cx,cy,mm*sc,mm*sc,0,0,Math.PI*2);x.stroke()});x.setLineDash([]);txt(x,'10 mm',cx+10*sc+3,cy-3,C.ghost,10);txt(x,'20 mm',cx+20*sc+3,cy-3,C.ghost,10)}
+txt(x,'high',cx,cy-ry-6,C.faint,11,'center');txt(x,'low',cx,cy+ry+14,C.faint,11,'center');return {cx,cy,sc,rx,ry}}
+function drawFace(){const x=xf,w=FW,h=FH,s=focus;x.clearRect(0,0,w,h);txt(x,'Strike on face',10,19,C.fg,12);const g=faceBase(x,w,h,8);if(!s){if(mode==='spray')return;txt(x,'No shot selected',g.cx,g.cy,C.empty,11,'center');return}const r=s.r;
+if(r[11]==null){txt(x,'Strike not captured',g.cx,g.cy-4,C.empty,11,'center');txt(x,'on this session\'s screen',g.cx,g.cy+11,C.empty,11,'center');return}
+const dr=Math.max(2.6,g.sc*1.1);
+const dots=(s.group||s.S.shots).filter(q=>q!==s&&F()(q.r)&&(!only||q.hot||s.isAvg));dots.forEach(q=>{if(q.r[11]==null)return;x.beginPath();x.arc(g.cx+q.r[12]*g.sc,g.cy-q.r[11]*g.sc,dr,0,7);x.globalAlpha=q.hot?.75:.45;x.fillStyle=q.hot?s.S.hex:C.neutral;x.fill();x.globalAlpha=1});
+const px=g.cx+r[12]*g.sc,py=g.cy-r[11]*g.sc,R=Math.max(6,g.sc*2.4);
+if(s.isAvg||tau>=IMP){const pt=tau-IMP;if(!s.isAvg&&pt<.7){x.beginPath();x.arc(px,py,R+pt*40,0,7);x.strokeStyle=C.flashRGB+(1-pt/.7)+')';x.lineWidth=2;x.stroke()}
+x.beginPath();x.arc(px,py,s.isAvg?R*1.3:R,0,7);x.fillStyle=s.hot?s.S.hex:C.fg;x.fill();x.strokeStyle=C.bg;x.lineWidth=2;x.stroke()}
+else{x.beginPath();x.arc(px,py,R,0,7);x.setLineDash([3,3]);x.strokeStyle=C.halo;x.lineWidth=1.5;x.stroke();x.setLineDash([])}
+txt(x,(s.isAvg?'Avg ':'')+'V '+fmt(r[11])+' mm · H '+fmt(r[12])+' mm',10,h-12,Math.abs(r[11])<=5?C.good:C.warn,12)}
+function arrow(x,ax,ay,bx,by,c,wd,dash){x.strokeStyle=c;x.lineWidth=wd;x.setLineDash(dash||[]);x.beginPath();x.moveTo(ax,ay);x.lineTo(bx,by);x.stroke();x.setLineDash([]);const a=Math.atan2(by-ay,bx-ax);x.fillStyle=c;x.beginPath();x.moveTo(bx,by);x.lineTo(bx-9*Math.cos(a-.4),by-9*Math.sin(a-.4));x.lineTo(bx-9*Math.cos(a+.4),by-9*Math.sin(a+.4));x.fill()}
+function drawDelivery(){const x=xd,w=DW,h=DH,s=focus,A=3,u=Math.min(w,h)/220;x.clearRect(0,0,w,h);txt(x,'Path & face (top view)',10,19,C.fg,12);if(!s){if(mode!=='spray')txt(x,'No shot selected',w/2,h/2,C.empty,11,'center');return}const r=s.r;
+const bx=w/2,by=h*.62;x.strokeStyle=C.dash;x.setLineDash([4,4]);x.lineWidth=1;x.beginPath();x.moveTo(bx,30);x.lineTo(bx,h-40);x.stroke();x.setLineDash([]);txt(x,'target line',bx+6,42,C.ghost,10);
+const p=r[13]*A*D2R,f=r[14]*A*D2R,dv=[Math.sin(p),-Math.cos(p)];
+arrow(x,bx-dv[0]*62*u,by-dv[1]*62*u,bx+dv[0]*50*u,by+dv[1]*50*u,C.neutral,1.5,[5,4]);txt(x,'path',bx+dv[0]*54*u+8,by+dv[1]*54*u,C.neutral,10);
+const uu=Math.min(tau/IMP,1),post=Math.max(0,tau-IMP),travel=(-60+60*uu*uu+Math.min(post,.4)*90)*u;
+const hx=bx+dv[0]*(travel-7*u),hy=by+dv[1]*(travel-7*u),fl=[Math.cos(f),Math.sin(f)],hl=27*u;
+x.globalAlpha=post>.4?Math.max(0,1-(post-.4)*2):1;x.strokeStyle=s.hot?s.S.hex:C.fg;x.lineWidth=5*Math.max(1,u*.8);x.lineCap='round';x.beginPath();x.moveTo(hx-fl[0]*hl,hy-fl[1]*hl);x.lineTo(hx+fl[0]*hl,hy+fl[1]*hl);x.stroke();x.lineCap='butt';x.globalAlpha=1;
+const sd=r[4]*A*D2R,bt=Math.min(post*160*u,by-34);x.beginPath();x.arc(bx+Math.sin(sd)*bt,by-Math.cos(sd)*bt,4.5*Math.max(1,u*.8),0,7);x.fillStyle=C.ball;x.fill();
+const f2p=+(r[14]-r[13]).toFixed(1),sp=r[9],shape=sp<-150?'draw spin':sp>150?'fade spin':'neutral spin';
+txt(x,(s.isAvg?'Avg · ':'')+'Path '+fmt(r[13])+'° · Face '+fmt(r[14])+'°',10,h-28,C.text,12);
+txt(x,'Face-to-path '+fmt(f2p)+'° · '+shape,10,h-12,Math.abs(f2p)<=2?C.good:C.warn,12);txt(x,'angles 3x',w-10,19,C.faint,10,'right')}
+let smOnly=false,smRings=true,smDots=true,lmet=1;const HITS={cs:[],cl:[]};
+const shotTip=q=>{const r=q.r,S=q.S;return `<b style="color:${S.lab}">${S.name} · #${q.n}${q.hot?' · best stretch':''}</b><br>${r[0]} carry · ${r[1]} total · ${sideTxt(r[2])}<br>${r[6]} mph ball · ${r[7]}° launch · ${Math.round(r[8])} rpm · smash ${r[10]}`+(r[11]!=null?`<br>strike V ${fmt(r[11])} / H ${fmt(r[12])} mm`:'')+(r[13]!=null?`<br>path ${fmt(r[13])}° · face ${fmt(r[14])}° · f2p ${fmt(+(r[14]-r[13]).toFixed(1))}°`+(r[15]!=null?` · AoA ${fmt(r[15])}°`:''):'')};
+function drawStrikeMap(){const [w,h]=fit(cs),x=xs;x.clearRect(0,0,w,h);const g=faceBase(x,w,h,0);let y=14;const big=w>700,hits=HITS.cs=[];txt(x,'Strike on face',w-10,19,C.fg,12,'right');
+const list=SES.filter(S=>S.shots.some(q=>q.r[11]!=null)&&sel.has(S.k));
+list.forEach(S=>{const rows=S.shots.filter(q=>(!smOnly||q.hot)&&q.r[11]!=null);if(smDots)rows.forEach(q=>{const px=g.cx+q.r[12]*g.sc,py=g.cy-q.r[11]*g.sc;hits.push({x:px,y:py,q});x.beginPath();x.arc(px,py,Math.max(q.hot?4:3,g.sc*(q.hot?.9:.7)),0,7);x.globalAlpha=q.hot?.9:.55;x.fillStyle=S.hex;x.fill();x.globalAlpha=1});
+if(!rows.length)return;const mv=avg(rows,q=>q.r[11]),mh=avg(rows,q=>q.r[12]),px=g.cx+mh*g.sc,py=g.cy-mv*g.sc;
+if(smRings){x.beginPath();x.arc(px,py,Math.max(9,g.sc*1.8),0,7);x.strokeStyle=S.hex;x.lineWidth=3;x.stroke();x.beginPath();x.moveTo(px-13,py);x.lineTo(px+13,py);x.moveTo(px,py-13);x.lineTo(px,py+13);x.lineWidth=1.5;x.stroke()}
+txt(x,`${S.name}: avg V ${fmt(mv.toFixed(0))} · H ${fmt(mh.toFixed(0))} mm · ${rows.length}`,10,y+=big?18:15,S.lab,big?12:10.5)});
+if(!list.length)txt(x,'No ticked session recorded strike location',g.cx,g.cy,C.empty,12,'center');
+txt(x,'+H / −H as reported by the sim · rings mark 10 and 20 mm',w-10,h-10,C.faint,10,'right')}
+function ell2(pts){const n=pts.length;if(n<3)return null;const mx=avg(pts,p=>p[0]),mz=avg(pts,p=>p[1]);let sxx=0,sxz=0,szz=0;pts.forEach(([px,pz])=>{const dx=px-mx,dz=pz-mz;sxx+=dx*dx;sxz+=dx*dz;szz+=dz*dz});sxx/=n-1;sxz/=n-1;szz/=n-1;
+const tr=sxx+szz,det=sxx*szz-sxz*sxz,disc=Math.sqrt(Math.max(0,tr*tr/4-det)),l1=tr/2+disc,l2=Math.max(tr/2-disc,.25);const ang=Math.abs(sxz)<1e-6?(sxx>=szz?0:Math.PI/2):Math.atan2(l1-sxx,sxz);return {mx,mz,a:Math.sqrt(l1),b:Math.sqrt(l2),ang,n}}
+const clc=$('cl'),xl=clc.getContext('2d');
+function drawLanding(){const [w,h]=fit(clc),x=xl;x.clearRect(0,0,w,h);const hits=HITS.cl=[];const L=40,R=14,T=40,B=30;
+const list=SES.filter(S=>sel.has(S.k)),rowsOf=S=>S.shots.filter(q=>!smOnly||q.hot),allRows=list.flatMap(rowsOf);
+const ds=allRows.map(q=>q.r[lmet]),os=allRows.map(q=>q.r[2]);let d0=allRows.length?Math.min(...ds)-15:150,d1=allRows.length?Math.max(...ds)+15:300;d0=Math.floor(d0/10)*10;d1=Math.ceil(d1/10)*10;const om=allRows.length?Math.max(40,Math.ceil(Math.max(...os.map(Math.abs))/10)*10+10):60;
+const X=o=>L+(w-L-R)*(o+om)/(2*om),Y=d=>T+(h-T-B)*(1-(d-d0)/(d1-d0));
+x.fillStyle=C.turf;x.fillRect(L,T,w-L-R,h-T-B);x.fillStyle=C.fw;x.fillRect(X(-fwW/2),T,X(fwW/2)-X(-fwW/2),h-T-B);
+x.strokeStyle=C.turfGrid;x.lineWidth=1;for(let d=d0;d<=d1;d+=10){if(d%50&&d1-d0>120)continue;x.beginPath();x.moveTo(L,Y(d));x.lineTo(w-R,Y(d));x.stroke();txt(x,d+'',L-5,Y(d)+4,C.faint,10,'right')}
+for(let o=-om;o<=om;o+=20){x.beginPath();x.moveTo(X(o),T);x.lineTo(X(o),h-B);x.stroke();txt(x,o===0?'0':Math.abs(o)+(o<0?' L':' R'),X(o),h-B+14,C.faint,10,'center')}
+x.strokeStyle=C.center;x.setLineDash([4,4]);x.beginPath();x.moveTo(X(0),T);x.lineTo(X(0),h-B);x.stroke();x.setLineDash([]);
+txt(x,(lmet?'Total':'Carry')+' distance (yd) · fairway '+fwW+' yd',10,19,C.fg,12);
+const lg=[];list.forEach(S=>{const rows=rowsOf(S);if(!rows.length)return;
+if(smDots)rows.forEach(q=>{const px=X(q.r[2]),py=Y(q.r[lmet]);hits.push({x:px,y:py,q});x.beginPath();x.arc(px,py,q.hot?4:3,0,7);x.globalAlpha=q.hot?.9:.5;x.fillStyle=S.hex;x.fill();x.globalAlpha=1});
+if(smRings){[['all',S.shots],['best',S.shots.filter(q=>q.hot)]].forEach(([sc,rs])=>{if(smOnly&&sc==='all')return;const e=ell2(rs.map(q=>[q.r[2],q.r[lmet]]));if(!e)return;const best=sc==='best',kx=(w-L-R)/(2*om),ky=(h-T-B)/(d1-d0);
+x.save();x.translate(X(e.mx),Y(e.mz));x.scale(kx,-ky);x.rotate(e.ang);x.beginPath();x.ellipse(0,0,e.a,e.b,0,0,Math.PI*2);x.restore();x.fillStyle=S.hex;x.globalAlpha=best?.18:.08;x.fill();x.globalAlpha=1;x.strokeStyle=S.hex;x.lineWidth=best?2:1.2;x.setLineDash(best?[]:[4,4]);x.stroke();x.setLineDash([]);
+const px=X(e.mx),py=Y(e.mz);x.beginPath();x.moveTo(px-6,py);x.lineTo(px+6,py);x.moveTo(px,py-6);x.lineTo(px,py+6);x.lineWidth=best?2:1;x.stroke()})}
+const md=avg(rows,q=>q.r[lmet]),mo=avg(rows,q=>q.r[2]),miss=avg(rows,q=>Math.abs(q.r[2]));lg.push(`<span class="chip" style="border-left-color:${S.hex}"><b style="color:var(--${S.cls}soft)">${S.short}</b> · ${Math.round(md)} yd · ${sideTxt(Math.round(mo))} · ${Math.round(miss)} yd miss · ${rows.length} shots</span>`)});$('llg').innerHTML=lg.join('');
+if(!allRows.length)txt(x,'No sessions ticked',w/2,h/2,C.empty,12,'center')}
+function hover(c,key,tip){const t=$(tip);c.onpointermove=e=>{const b=c.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;let best=null,bd=100;HITS[key].forEach(hh=>{const d=(hh.x-mx)**2+(hh.y-my)**2;if(d<bd){bd=d;best=hh}});
+if(!best){t.style.display='none';return}t.innerHTML=shotTip(best.q);t.style.display='block';const tw=t.offsetWidth,th=t.offsetHeight;t.style.left=Math.min(Math.max(0,best.x+12),b.width-tw-4)+'px';t.style.top=(best.y-th-10<0?best.y+14:best.y-th-10)+'px'};
+c.onpointerleave=()=>t.style.display='none'}
+hover(cs,'cs','tips');hover(clc,'cl','tipl');
+let selSes=null;
+function stripFrame(c,title,legend){const [w,h]=fit(c),x=c.getContext('2d');x.clearRect(0,0,w,h);txt(x,title,12,18,C.fg,12);if(legend)txt(x,legend,12,33,C.muted,10);return {x,w,h}}
+function stripAxes(x,w,h,lo,hi,dec,zero){const L=48,R=14,T=46,B=44,n=SES.length,X=j=>L+(w-L-R)*((j+.5)/n),Y=v=>T+(h-T-B)*(1-(v-lo)/(hi-lo));const step=(w-L-R)/n;
+if(selSes){const j=SES.indexOf(selSes);x.fillStyle=C.band;x.fillRect(X(j)-step/2,T-6,step,h-T-B+12)}
+x.strokeStyle=C.grid;x.lineWidth=1;[0,.5,1].forEach(f=>{const v=lo+(hi-lo)*f,yy=Y(v);x.beginPath();x.moveTo(L,yy);x.lineTo(w-R,yy);x.stroke();txt(x,v.toFixed(dec),L-6,yy+4,C.faint,10,'right')});
+if(zero&&lo<0&&hi>0){x.strokeStyle=C.cross;x.beginPath();x.moveTo(L,Y(0));x.lineTo(w-R,Y(0));x.stroke()}
+const stag=step<44;SES.forEach((S,j)=>{txt(x,S.tag,X(j),h-(stag&&j%2?6:18),S===selSes?C.fg:C.axis,9.5,'center');x.fillStyle=S.hex;x.fillRect(X(j)-5,h-(stag?32:13),10,3)});return {X,Y,step}}
+function stripLine(x,X,Y,vals,dash){x.setLineDash(dash);x.strokeStyle=C.neutral;x.lineWidth=1.5;x.beginPath();let st=false;vals.forEach((v,j)=>{if(v==null){st=false;return}if(!st){x.moveTo(X(j),Y(v));st=true}else x.lineTo(X(j),Y(v))});x.stroke();x.setLineDash([])}
+function stripDot(x,px,py,hex,filled){x.beginPath();x.arc(px,py,filled?5:4.5,0,7);if(filled){x.fillStyle=hex;x.fill()}else{x.fillStyle=C.bg;x.fill();x.strokeStyle=hex;x.lineWidth=2;x.stroke()}}
+function drawStrip(){
+const metrics=[['Carry (yd)',q=>q.r[0],0,false],['Smash factor',q=>q.r[10],2,false],['Avg miss (yd)',q=>Math.abs(q.r[2]),0,false],['Vertical strike (mm, + high)',q=>q.r[11],0,true],['Horizontal strike spread (mm from center)',q=>q.r[12]==null?null:Math.abs(q.r[12]),0,false]];
+metrics.forEach((m,i)=>{const {x,w,h}=stripFrame(PC[i],m[0],'filled = best stretch · hollow = whole session');
+const pts=SES.map(S=>{const all=S.shots.filter(q=>m[1](q)!=null),best=all.filter(q=>q.hot);return {S,a:all.length?avg(all,m[1]):null,b:best.length?avg(best,m[1]):null}});
+const vals=pts.flatMap(p=>[p.a,p.b]).filter(v=>v!=null);if(!vals.length)return;let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.3||1;lo-=pad;hi+=pad;if(m[3]){lo=Math.min(lo,-20);hi=Math.max(hi,6)}if(i===4||i===2)lo=Math.max(lo,0);
+const {X,Y,step}=stripAxes(x,w,h,lo,hi,m[2],m[3]);
+stripLine(x,X,Y,pts.map(p=>p.a),[3,3]);stripLine(x,X,Y,pts.map(p=>p.b),[]);
+pts.forEach((p,j)=>{if(p.a!=null)stripDot(x,X(j),Y(p.a),p.S.hex,false);if(p.b!=null){stripDot(x,X(j),Y(p.b),p.S.hex,true);
+if(step>=34||p.S===selSes){const above=p.a==null||p.b>=p.a;txt(x,p.b.toFixed(m[2]),X(j),Y(p.b)+(above?-9:15),p.S.lab,9.5,'center')}}})});
+const {x,w,h}=stripFrame(PC[5],'Club path and face to target (°)','solid = path · dotted = face · label = face-to-path');
+const pf=SES.map(S=>{const rows=S.shots.filter(q=>q.r[13]!=null&&q.r[14]!=null);return {S,path:rows.length?avg(rows,q=>q.r[13]):null,face:rows.length?avg(rows,q=>q.r[14]):null}});
+const vals=pf.flatMap(p=>[p.path,p.face]).filter(v=>v!=null);let lo=Math.min(0,...vals)-1,hi=Math.max(...vals)+2;
+const {X,Y,step}=stripAxes(x,w,h,lo,hi,1,true);
+stripLine(x,X,Y,pf.map(p=>p.path),[]);stripLine(x,X,Y,pf.map(p=>p.face),[3,3]);
+pf.forEach((p,j)=>{if(p.path!=null)stripDot(x,X(j),Y(p.path),p.S.hex,true);if(p.face!=null){stripDot(x,X(j),Y(p.face),p.S.hex,false);
+if(step>=34||p.S===selSes){const d=p.face-p.path,top=Math.min(Y(p.face),Y(p.path));txt(x,(d>0?'+':'')+d.toFixed(1),X(j),top-9,Math.abs(d)<=2?C.good:C.warn,9.5,'center')}}})}
+
+// ---------- tables ----------
+const METRICS=[['Club speed (mph)',r=>r[17],0,0],['Ball speed (mph)',r=>r[6],0,1],['Smash',r=>r[10],2,1],['Launch (°)',r=>r[7],0,0],['Backspin (rpm)',r=>r[8],-1,0],['Apex (yd)',r=>r[3],0,0],['Carry (yd)',r=>r[0],0,1],['Total (yd)',r=>r[1],0,1],['Avg offline (yd, + right)',r=>r[2],0,0],['Avg miss, either side (yd)',r=>Math.abs(r[2]),0,-1],['Path (°)',r=>r[13],1,0],['Face to target (°)',r=>r[14],1,0],['Face-to-path, abs (°)',r=>Math.abs(r[14]-r[13]),1,-1],['Attack angle (°)',r=>r[15],1,0],['Vertical strike (mm)',r=>r[11],0,0]];
+function cell(rows,m){const v=rows.map(q=>m[1](q.r)).filter(x=>x!=null);if(!v.length)return null;return v.reduce((a,b)=>a+b)/v.length}
+const fmtV=(v,d)=>v==null?'n/a':d===-1?(Math.round(v/10)*10).toLocaleString():v.toFixed(d);
+function diffCell(a,b,m){let diff='',cls='';if(a!=null&&b!=null){const d=b-a,t=fmtV(Math.abs(d),m[2]),zero=parseFloat(t.replace(/,/g,''))===0;diff=zero?'0':(d>0?'+':'-')+t;if(m[3]!==0&&!zero)cls=Math.sign(d)*m[3]>0?'up':'down'}return `<td class="${cls}">${diff}</td>`}
+function h2hTable(){const A=parseG(h2hA),B=parseG(h2hB),ra=group(A.S,A.scope),rb=group(B.S,B.scope);
+const nm=g=>`${g.S.name} · ${g.scope==='best'?'best '+g.S.best[0]+'-'+g.S.best[1]:'all'}`;
+$('hh').innerHTML=`<tr><th></th><th class="${A.S.cls}">${nm(A)}<br>${ra.length} shots</th><th class="${B.S.cls}">${nm(B)}<br>${rb.length} shots</th><th>B − A</th></tr>`;
+const rows=METRICS.map(m=>{const a=cell(ra,m),b=cell(rb,m);return `<tr><td>${m[0]}</td><td>${fmtV(a,m[2])}</td><td>${fmtV(b,m[2])}</td>${diffCell(a,b,m)}</tr>`});
+const fw=rows=>rows.length?Math.round(rows.filter(q=>Math.abs(q.r[2])<=fwW/2).length/rows.length*100):null,dr=rows=>rows.length?Math.round(rows.filter(q=>q.r[9]<-150).length/rows.length*100):null;
+const extra=(label,fa,fb,better)=>{let diff='',cls='';if(fa!=null&&fb!=null){const d=fb-fa;diff=(d>0?'+':'')+d+' pts';if(better&&d)cls=Math.sign(d)*better>0?'up':'down'}return `<tr><td>${label}</td><td>${fa==null?'n/a':fa+'%'}</td><td>${fb==null?'n/a':fb+'%'}</td><td class="${cls}">${diff}</td></tr>`};
+$('hb').innerHTML=rows.join('')+extra(`In a ${fwW} yd fairway`,fw(ra),fw(rb),1)+extra('Shots with draw spin',dr(ra),dr(rb),0)}
+function showDetail(S){const d=$('detail');document.querySelectorAll('.ses').forEach(b=>b.classList.toggle('on',S&&b.dataset.k===S.k));drawStrip();if(!S){d.hidden=true;return}
+const j=SES.indexOf(S),P=j>0?SES[j-1]:null,a=S.shots,b=a.filter(q=>q.hot),pa=P?P.shots:[];
+d.hidden=false;d.innerHTML=`<div class="head"><h3 style="color:var(--${S.cls}soft)">${S.name}</h3><span class="small">${a.length} drives · best stretch ${S.best[0]}-${S.best[1]} · ${S.cue}</span><span class="grow"></span><button data-open="${S.k}">Open in replay</button></div>
+<div class="tablewrap"><table><thead><tr><th></th><th class="${S.cls}">Best ${S.best[0]}-${S.best[1]}</th><th class="${S.cls}">Whole session</th>${P?`<th class="${P.cls}">${P.name}<br>whole session</th><th>vs previous</th>`:''}</tr></thead><tbody>`+
+METRICS.map(m=>{const vb=cell(b,m),va=cell(a,m),vp=P?cell(pa,m):null;return `<tr><td>${m[0]}</td><td class="best">${fmtV(vb,m[2])}</td><td>${fmtV(va,m[2])}</td>${P?`<td>${fmtV(vp,m[2])}</td>${diffCell(vp,va,m)}`:''}</tr>`}).join('')+'</tbody></table></div>';
+d.querySelector('[data-open]').onclick=()=>openIn(S.k)}
+function openIn(k){showTab('replay');setMode('best');setSes(k);scrollTo({top:0,behavior:'smooth'})}
+(function(){const groups=[];NEWEST.forEach(S=>{groups.push({S,rows:S.shots.filter(q=>q.hot),lab:`best ${S.best[0]}-${S.best[1]}`,best:true});groups.push({S,rows:S.shots,lab:`all ${S.shots.length}`,best:false})});
+$('th').innerHTML='<tr><th></th>'+groups.map(g=>`<th class="${g.S.cls}">${g.S.name}<br>${g.lab}</th>`).join('')+'</tr>';
+$('tb').innerHTML=METRICS.map(m=>'<tr><td>'+m[0]+'</td>'+groups.map(g=>{const v=cell(g.rows,m);let t=fmtV(v,m[2]);if(m[0].startsWith('Avg offline')&&v>0)t='+'+t;return '<td'+(g.best?' class="best"':'')+'>'+t+'</td>'}).join('')+'</tr>').join('');
+$('prog').innerHTML=SES.map((S,j)=>{const a=S.shots,b=a.filter(q=>q.hot),P=j>0?SES[j-1]:null,c=Math.round(avg(a,q=>q.r[0])),dc=P?c-Math.round(avg(P.shots,q=>q.r[0])):null;return `<button class="ses" data-k="${S.k}" aria-pressed="false"><span class="k" style="color:var(--${S.cls}soft)">${S.name} · ${a.length} balls</span><span class="big">${Math.round(avg(b,q=>q.r[0]))}<small>carry, best ${S.best[0]}-${S.best[1]}</small></span><span class="sub">Session avg ${c} carry · ${Math.round(avg(a,q=>Math.abs(q.r[2])))} yd miss · ${avg(a,q=>q.r[10]).toFixed(2)} smash</span><span class="sub">Best ${Math.round(avg(b,q=>q.r[1]))} total · ${Math.round(avg(b,q=>Math.abs(q.r[2])))} yd miss · ${avg(b,q=>q.r[6]).toFixed(0)} mph ball</span>${dc==null?'':`<span class="d ${dc>0?'up':dc<0?'down':''}">${dc>0?'+':''}${dc} yd session carry vs ${P.tag}</span>`}<span class="cue">${S.cue}</span></button>`}).join('');
+document.querySelectorAll('.ses').forEach(b=>b.onclick=()=>{const S=byK(b.dataset.k);selSes=selSes===S?null:S;showDetail(selSes)});
+$('stretchlist').textContent='Highlighted stretches: '+NEWEST.map(S=>`${S.name} shots ${S.best[0]}-${S.best[1]}`).join(' · ')+'.';
+$('legend').innerHTML=NEWEST.map(S=>`<span><span class="sw" style="background:${S.hex}"></span>${S.name} best (${S.best[0]}-${S.best[1]})</span>`).join('')+'<span><span class="sw" style="background:#8a8a85;height:2px"></span>Other shots</span><span>Height drawn at 1.5x · path panel angles at 3x</span>';
+const opts=NEWEST.flatMap(S=>[`<option value="${S.k}:best">${S.name} · best ${S.best[0]}-${S.best[1]}</option>`,`<option value="${S.k}:all">${S.name} · all</option>`]).join('');['ga','gb','ha','hb'].forEach(id=>$(id).innerHTML=opts);$('ga').value=$('ha').value=h2hA;$('gb').value=$('hb').value=h2hB;
+$('filter').innerHTML=Object.entries(FILTERS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('');
+document.querySelectorAll('.tl [data-open]').forEach(b=>b.onclick=()=>openIn(b.dataset.open))})();
+
+// ---------- controls ----------
+$('mode').onchange=e=>setMode(e.target.value);
+MENUS.forEach(([bt,mn])=>$(bt).onclick=()=>openMenu(mn,$(mn).hidden));document.addEventListener('pointerdown',e=>{if(!e.target.closest('.dd'))openMenu(null,false)});
+$('cam').onchange=e=>setCam(e.target.value);
+$('orbit').onchange=e=>setOrbit(e.target.checked);
+$('auto').onchange=e=>autoAdv=e.target.checked;
+$('trails').onchange=e=>showTrails=e.target.checked;
+const navList=()=>ALL.filter(q=>sel.has(q.S.k));
+$('pv').onclick=()=>{const l=navList();if(!l.length)return;const i=l.indexOf(cur);select(l[(i-1+l.length)%l.length])};
+$('nx').onclick=()=>{const l=navList();if(!l.length)return;const i=l.indexOf(cur);select(l[(i+1)%l.length])};
+$('shot').onchange=e=>{const [k,i]=e.target.value.split(':');select(byK(k).shots[+i])};
+$('only').onchange=e=>{only=e.target.checked;refreshDisp();renderCard()};
+$('filter').onchange=e=>{filter=e.target.value;setMode(modeSel);h2hTable()};
+$('disp').onchange=e=>{showDisp=e.target.checked;refreshDisp()};
+$('donly').onchange=e=>{dispOnly=e.target.checked;if(dispOnly){showDisp=true;$('disp').checked=true}refreshDisp()};
+$('fw').onchange=e=>{fwW=+e.target.value;fwMesh.scale.x=fwW;fwEdges.forEach(l=>l.scale.x=fwW/2);refreshDisp();h2hTable();drawLanding()};
+$('fwon').onchange=e=>{fwMesh.visible=e.target.checked;fwEdges.forEach(l=>l.visible=e.target.checked)};
+$('pdel').onchange=layoutView;$('pstr').onchange=layoutView;
+function setGroups(a,b){h2hA=a;h2hB=b;['ga','ha'].forEach(id=>$(id).value=a);['gb','hb'].forEach(id=>$(id).value=b);h2hTable();if(mode==='h2h')setMode('h2h')}
+['ga','ha'].forEach(id=>$(id).onchange=e=>setGroups(e.target.value,h2hB));
+['gb','hb'].forEach(id=>$(id).onchange=e=>setGroups(h2hA,e.target.value));
+$('smo').onchange=e=>{smOnly=e.target.checked;drawStrikeMap();drawLanding()};
+$('smr').onchange=e=>{smRings=e.target.checked;drawStrikeMap();drawLanding()};
+$('smd').onchange=e=>{smDots=e.target.checked;drawStrikeMap();drawLanding()};
+$('lmet').onchange=e=>{lmet=+e.target.value;drawLanding()};
+SES.forEach(S=>S.lab=S.soft);let th='dark';try{th=localStorage.getItem('replay-theme')||'dark'}catch(e){}if(th==='light')applyTheme('light');
+new ResizeObserver(resize).observe(stage);addEventListener('resize',resize);resize();
+const TABS=['replay','compare','trends','disp','notes'];
+function showTab(k){if(!TABS.includes(k))k='replay';document.querySelectorAll('section[data-tab]').forEach(s=>s.hidden=s.dataset.tab!==k);document.querySelectorAll('.tabs button').forEach(b=>{b.classList.toggle('on',b.dataset.t===k);b.setAttribute('aria-selected',b.dataset.t===k)});requestAnimationFrame(resize);if(location.hash.slice(1)!==k)history.replaceState(null,'','#'+k)}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+addEventListener('hashchange',()=>showTab(location.hash.slice(1)));
+setCam('broadcast');renderSesMenu();fillShots();setMode('best');h2hTable();showTab(location.hash.slice(1)||'replay');
+let last=performance.now();
+(function loop(now){const dt=Math.min((now-last)/1000,.1)*slow;last=now;update(dt);camStep(dt);drawFace();drawDelivery();renderer.render(scene,camera);requestAnimationFrame(loop)})(last);
+</script>

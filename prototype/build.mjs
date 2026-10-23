@@ -1,0 +1,10 @@
+import fs from "node:fs";
+import { execSync } from "node:child_process";
+const t = fs.readFileSync("replay-template.html", "utf8"), d = fs.readFileSync("data.js", "utf8");
+const out = t.replace("/*DATA*/", d);
+fs.writeFileSync("driver-flight-replay.html", out);
+fs.mkdirSync("test", { recursive: true });
+fs.writeFileSync("test/page.html", out.replace("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "three-stub.js"));
+fs.writeFileSync("test/_check.js", out.match(/<script>\n([\s\S]*)<\/script>/)[1]);
+execSync("node --check test/_check.js", { stdio: "inherit" });
+console.log("built driver-flight-replay.html and test/page.html");

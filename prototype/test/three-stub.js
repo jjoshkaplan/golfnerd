@@ -1,0 +1,12 @@
+// Minimal THREE stub for logic smoke-testing (no rendering).
+(function(){
+class Vector3{constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z}set(x,y,z){this.x=x;this.y=y;this.z=z;return this}clone(){return new Vector3(this.x,this.y,this.z)}copy(v){this.x=v.x;this.y=v.y;this.z=v.z;return this}add(v){this.x+=v.x;this.y+=v.y;this.z+=v.z;return this}subVectors(a,b){this.x=a.x-b.x;this.y=a.y-b.y;this.z=a.z-b.z;return this}multiplyScalar(s){this.x*=s;this.y*=s;this.z*=s;return this}setY(y){this.y=y;return this}length(){return Math.hypot(this.x,this.y,this.z)}normalize(){const l=this.length()||1;return this.multiplyScalar(1/l)}distanceTo(v){return Math.hypot(this.x-v.x,this.y-v.y,this.z-v.z)}lerp(v,a){this.x+=(v.x-this.x)*a;this.y+=(v.y-this.y)*a;this.z+=(v.z-this.z)*a;return this}lerpVectors(a,b,t){this.x=a.x+(b.x-a.x)*t;this.y=a.y+(b.y-a.y)*t;this.z=a.z+(b.z-a.z)*t;return this}}
+class Obj{constructor(){this.position=new Vector3();this.rotation={x:0,y:0,z:0};this.scale=new Vector3(1,1,1);this.visible=true;this.children=[];this.up=new Vector3(0,1,0)}add(c){this.children.push(c)}lookAt(){}updateProjectionMatrix(){}}
+class Geo{constructor(){this.drawRange={}}setFromPoints(){return this}setDrawRange(a,b){this.drawRange={a,b}}computeLineDistances(){}}
+class Mat{constructor(o={}){Object.assign(this,o);this.color={setHex(){}, set(){}}}}
+class Mesh extends Obj{constructor(g,m){super();this.geometry=g||new Geo();this.material=m||new Mat()}computeLineDistances(){}}
+class Color{constructor(){}setHex(){return this}}
+class Curve{constructor(x,y,a,b,s,e,c,r){this.a=a;this.b=b}getPoints(n){const o=[];for(let i=0;i<=n;i++)o.push({x:Math.cos(i/n*6.28)*(this.a||1),y:Math.sin(i/n*6.28)*(this.b||1)});return o}}
+class Shape{absellipse(){return this}}
+window.THREE={Vector3,Scene:class extends Obj{},WebGLRenderer:class{constructor(){this.domElement=document.createElement('canvas')}setPixelRatio(){}setSize(){}render(){}},PerspectiveCamera:class extends Obj{constructor(){super();this.aspect=1}},Mesh,Line:Mesh,LineSegments:Mesh,Sprite:Mesh,MeshBasicMaterial:Mat,LineBasicMaterial:Mat,LineDashedMaterial:Mat,SpriteMaterial:Mat,PlaneGeometry:Geo,SphereGeometry:Geo,RingGeometry:Geo,TubeGeometry:Geo,ShapeGeometry:Geo,BufferGeometry:Geo,CatmullRomCurve3:class{constructor(p){this.p=p}},EllipseCurve:Curve,Shape,Fog:class{constructor(){this.color=new Color()}},Color,CanvasTexture:class{},DoubleSide:2,AdditiveBlending:2};
+})();
